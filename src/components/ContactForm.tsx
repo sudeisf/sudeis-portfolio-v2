@@ -2,6 +2,7 @@ import { FormEvent, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeftRight, ArrowRight, Brain, CheckCircle, Database, HelpCircle, Mail, Phone, Send, ShieldCheck, Trash2 } from 'lucide-react';
 import { ContactMessage } from '../types';
+import { safeStorage } from '../utils/safeStorage';
 
 interface ContactFormProps {
   onSuccess: () => void;
@@ -24,7 +25,7 @@ export default function ContactForm({ onSuccess, isOpen = false, onClose, preSel
 
   // Load inquiries from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem('sudeis_inquiries');
+    const saved = safeStorage.getItem('sudeis_inquiries');
     if (saved) {
       try {
         setSubmittedInquiries(JSON.parse(saved));
@@ -111,7 +112,7 @@ export default function ContactForm({ onSuccess, isOpen = false, onClose, preSel
       };
 
       const updated = [newInquiry, ...submittedInquiries];
-      localStorage.setItem('sudeis_inquiries', JSON.stringify(updated));
+      safeStorage.setItem('sudeis_inquiries', JSON.stringify(updated));
       setSubmittedInquiries(updated);
 
       setIsSubmitting(false);
@@ -127,13 +128,13 @@ export default function ContactForm({ onSuccess, isOpen = false, onClose, preSel
 
   const deleteInquiry = (id: string) => {
     const filtered = submittedInquiries.filter(i => i.id !== id);
-    localStorage.setItem('sudeis_inquiries', JSON.stringify(filtered));
+    safeStorage.setItem('sudeis_inquiries', JSON.stringify(filtered));
     setSubmittedInquiries(filtered);
   };
 
   const clearAllInquiries = () => {
     if (window.confirm('Are you sure you want to clear the client submission database?')) {
-      localStorage.removeItem('sudeis_inquiries');
+      safeStorage.removeItem('sudeis_inquiries');
       setSubmittedInquiries([]);
     }
   };
@@ -167,18 +168,14 @@ export default function ContactForm({ onSuccess, isOpen = false, onClose, preSel
               <span className="text-[10px] font-display tracking-widest text-gray-400 uppercase block font-bold">
                 CREATIVE DISPATCH
               </span>
-              <div className="space-y-3.5 text-xs font-sans text-neutral-800">
+              <div className="space-y-3.5 text-xs font-sans text-gray-800 dark:text-gray-200">
                 <div className="flex items-center gap-3">
-                  <Mail className="w-4 h-4 text-black" />
-                  <a href="mailto:sudeis@dev.io" className="hover:text-black transition-colors font-light">sudeis@dev.io</a>
+                  <Mail className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                  <a href="mailto:sudeisfed@gmail.com" className="hover:text-black dark:hover:text-white transition-colors font-light">sudeisfed@gmail.com</a>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Phone className="w-4 h-4 text-black" />
-                  <a href="tel:+082124720342" className="hover:text-black transition-colors font-light">+(082) 124 7203 42</a>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Database className="w-4 h-4 text-black mt-0.5" />
-                  <span className="leading-relaxed font-light">Technology Park 7-12 Gumpang Recidance, Surakarta 57292</span>
+                  <Phone className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                  <a href="tel:+251974126234" className="hover:text-black dark:hover:text-white transition-colors font-light">+251974126234</a>
                 </div>
               </div>
             </div>
@@ -406,11 +403,11 @@ export default function ContactForm({ onSuccess, isOpen = false, onClose, preSel
                               {inq.email}
                             </span>
                           </div>
-                          <span className="font-display text-[9px] font-bold bg-neutral-100 text-black px-3 py-1.5 rounded-full uppercase">
+                          <span className="tech-badge font-display text-[9px] font-bold px-3 py-1.5 rounded-full uppercase">
                             {inq.projectType}
                           </span>
                         </div>
-                        <p className="font-sans text-xs text-neutral-800 leading-relaxed font-light line-clamp-3">
+                        <p className="font-sans text-xs text-neutral-800 dark:text-gray-300 leading-relaxed font-light line-clamp-3">
                           "{inq.message || 'No target document details provided.'}"
                         </p>
                       </div>

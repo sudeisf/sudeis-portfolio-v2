@@ -1,17 +1,20 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Menu, X, Rocket, Terminal, Settings } from 'lucide-react';
+import { Menu, X, Rocket, Terminal, Settings, Sun, Moon, Monitor } from 'lucide-react';
 
 interface HeaderProps {
   onStartProject: () => void;
   onViewInbox: () => void;
   messageCount: number;
   onOpenCMS: () => void;
+  theme: 'light' | 'dark' | 'system';
+  onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
 }
 
-export default function Header({ onStartProject, onViewInbox, messageCount, onOpenCMS }: HeaderProps) {
+export default function Header({ onStartProject, onViewInbox, messageCount, onOpenCMS, theme, onThemeChange }: HeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isThemeDropdownOpen, setIsThemeDropdownOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('hero');
 
   useEffect(() => {
@@ -114,6 +117,57 @@ export default function Header({ onStartProject, onViewInbox, messageCount, onOp
             </button>
           )}
 
+          {/* Theme Switcher Button */}
+          <div className="relative" id="theme-menu-container">
+            <button
+              onClick={() => setIsThemeDropdownOpen(!isThemeDropdownOpen)}
+              className="p-2.5 text-gray-600 hover:text-black hover:bg-black/5 rounded-full transition-colors cursor-pointer flex items-center justify-center"
+              title="Toggle Theme"
+              id="btn-theme-selector"
+            >
+              {theme === 'light' && <Sun className="w-4 h-4" />}
+              {theme === 'dark' && <Moon className="w-4 h-4" />}
+              {theme === 'system' && <Monitor className="w-4 h-4" />}
+            </button>
+
+            <AnimatePresence>
+              {isThemeDropdownOpen && (
+                <>
+                  <div className="fixed inset-0 z-30" onClick={() => setIsThemeDropdownOpen(false)} />
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: 5 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 5 }}
+                    className="absolute right-0 mt-2 w-32 bg-white border border-black/5 rounded-xl shadow-lg py-1.5 z-40 overflow-hidden font-display text-[10px] uppercase tracking-wider"
+                    id="theme-dropdown-menu"
+                  >
+                    {[
+                      { key: 'light', label: 'Light', icon: <Sun className="w-3.5 h-3.5" /> },
+                      { key: 'dark', label: 'Dark', icon: <Moon className="w-3.5 h-3.5" /> },
+                      { key: 'system', label: 'System', icon: <Monitor className="w-3.5 h-3.5" /> }
+                    ].map((item) => (
+                      <button
+                        key={item.key}
+                        onClick={() => {
+                          onThemeChange(item.key as 'light' | 'dark' | 'system');
+                          setIsThemeDropdownOpen(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 flex items-center gap-2 duration-200 transition-colors cursor-pointer ${
+                          theme === item.key 
+                            ? 'bg-black text-white' 
+                            : 'text-gray-600 hover:bg-black/5 hover:text-black'
+                        }`}
+                      >
+                        {item.icon}
+                        {item.label}
+                      </button>
+                    ))}
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
+          </div>
+
           <button
             onClick={onStartProject}
             className="font-display text-[10px] font-bold uppercase tracking-[0.15em] bg-black text-white px-5 py-2.5 rounded-full hover:bg-[#1C1C1E] transition-all flex items-center gap-1.5 cursor-pointer hover:scale-[1.02]"
@@ -172,7 +226,34 @@ export default function Header({ onStartProject, onViewInbox, messageCount, onOp
                   {link.name}
                 </button>
               ))}
-              <div className="pt-4 flex flex-col gap-3">
+              {/* Mobile Theme Selection Selector */}
+              <div className="pt-2 border-t border-black/5 flex flex-col gap-2" id="mobile-theme-selection">
+                <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-gray-400">Appearance</span>
+                <div className="grid grid-cols-3 gap-1.5 bg-black/5 p-1 rounded-xl">
+                  {[
+                    { key: 'light', label: 'Light', icon: <Sun className="w-3.5 h-3.5" /> },
+                    { key: 'dark', label: 'Dark', icon: <Moon className="w-3.5 h-3.5" /> },
+                    { key: 'system', label: 'System', icon: <Monitor className="w-3.5 h-3.5" /> }
+                  ].map((item) => (
+                    <button
+                      key={item.key}
+                      onClick={() => {
+                        onThemeChange(item.key as 'light' | 'dark' | 'system');
+                      }}
+                      className={`py-2 px-1 flex flex-col items-center justify-center gap-1.5 rounded-lg text-[9px] font-bold tracking-wider uppercase transition-all duration-200 cursor-pointer ${
+                        theme === item.key
+                          ? 'bg-white text-black shadow-sm'
+                          : 'text-gray-400 hover:text-black'
+                      }`}
+                    >
+                      {item.icon}
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-2 flex flex-col gap-3">
                 <button
                   onClick={() => {
                     setIsMobileMenuOpen(false);

@@ -27,6 +27,7 @@ import {
   FileCheck
 } from 'lucide-react';
 import { Project, ContactMessage } from '../types';
+import { safeStorage } from '../utils/safeStorage';
 
 interface AdminDashboardProps {
   projects: Project[];
@@ -71,10 +72,10 @@ export default function AdminDashboard({
   const [selectedInquiry, setSelectedInquiry] = useState<ContactMessage | null>(null);
   
   const [adminEmail, setAdminEmail] = useState(() => {
-    return localStorage.getItem('sudeis_admin_email') || 'sudeisfed@gmail.com';
+    return safeStorage.getItem('sudeis_admin_email') || 'sudeisfed@gmail.com';
   });
   const [passcode, setPasscode] = useState(() => {
-    return localStorage.getItem('sudeis_admin_passcode') || 'sudeis2026';
+    return safeStorage.getItem('sudeis_admin_passcode') || 'sudeis2026';
   });
   const [newPasscode, setNewPasscode] = useState('');
   const [confirmPasscode, setConfirmPasscode] = useState('');
@@ -87,7 +88,7 @@ export default function AdminDashboard({
 
   // Load inquiries
   const loadInquiries = () => {
-    const saved = localStorage.getItem('sudeis_inquiries');
+    const saved = safeStorage.getItem('sudeis_inquiries');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -228,12 +229,12 @@ export default function AdminDashboard({
   // Delete Inquiry
   const handleDeleteInquiry = (id: string) => {
     if (confirm('Delete this client inquiry message permanently?')) {
-      const raw = localStorage.getItem('sudeis_inquiries');
+      const raw = safeStorage.getItem('sudeis_inquiries');
       if (raw) {
         try {
           const parsed: ContactMessage[] = JSON.parse(raw);
           const filtered = parsed.filter(m => m.id !== id);
-          localStorage.setItem('sudeis_inquiries', JSON.stringify(filtered));
+          safeStorage.setItem('sudeis_inquiries', JSON.stringify(filtered));
           setInquiries(filtered.reverse());
           if (selectedInquiry?.id === id) {
             setSelectedInquiry(null);
@@ -250,7 +251,7 @@ export default function AdminDashboard({
   // Clear all inquiries
   const handleClearInquiries = () => {
     if (confirm('Are you sure you want to delete ALL submitted inquiries from your logs? This cannot be undone.')) {
-      localStorage.setItem('sudeis_inquiries', JSON.stringify([]));
+      safeStorage.setItem('sudeis_inquiries', JSON.stringify([]));
       setInquiries([]);
       setSelectedInquiry(null);
       window.dispatchEvent(new Event('storage'));
@@ -268,11 +269,11 @@ export default function AdminDashboard({
         setSecurityError('Passcodes do not match.');
         return;
       }
-      localStorage.setItem('sudeis_admin_passcode', newPasscode);
+      safeStorage.setItem('sudeis_admin_passcode', newPasscode);
       setPasscode(newPasscode);
     }
 
-    localStorage.setItem('sudeis_admin_email', adminEmail);
+    safeStorage.setItem('sudeis_admin_email', adminEmail);
     setSecuritySuccess('Administrative configuration updated successfully.');
     setNewPasscode('');
     setConfirmPasscode('');

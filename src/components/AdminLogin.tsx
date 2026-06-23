@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ShieldAlert, KeyRound, Mail, ArrowRight, Eye, EyeOff, Sparkles, HelpCircle } from 'lucide-react';
+import { safeStorage } from '../utils/safeStorage';
 
 interface AdminLoginProps {
   onLoginSuccess: () => void;
@@ -17,7 +18,7 @@ export default function AdminLogin({ onLoginSuccess, allowedEmail }: AdminLoginP
 
   // Retrieve or initialize the configured passcode
   const getStoredPasscode = () => {
-    return localStorage.getItem('sudeis_admin_passcode') || 'sudeis2026';
+    return safeStorage.getItem('sudeis_admin_passcode') || 'sudeis2026';
   };
 
   const handleLoginSubmit = (e: React.FormEvent) => {
@@ -39,7 +40,7 @@ export default function AdminLogin({ onLoginSuccess, allowedEmail }: AdminLoginP
       setIsSubmitting(true);
       // Simulate real verification check latency
       setTimeout(() => {
-        localStorage.setItem('sudeis_admin_auth', 'true');
+        safeStorage.setItem('sudeis_admin_auth', 'true');
         onLoginSuccess();
         setIsSubmitting(false);
       }, 800);

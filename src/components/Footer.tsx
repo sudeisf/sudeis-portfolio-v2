@@ -24,7 +24,7 @@ export default function Footer() {
           {/* Brand Col */}
           <div className="space-y-4" id="footer-col-brand">
             <h3 className="font-display text-xl font-black uppercase text-black tracking-tight">
-              Duwy
+              sudeis Fedlu
             </h3>
             <p className="font-sans text-xs text-gray-500 leading-relaxed max-w-[240px] font-light">
               Sudeis F. is a Full Stack Developer creating high-performance digital products that scale with your business and vision.
@@ -52,7 +52,7 @@ export default function Footer() {
               ADDRESS
             </h4>
             <p className="font-sans text-xs text-gray-500 leading-relaxed max-w-[220px] font-light">
-              Technology Park 7-12 Gumpang Recidance, Surakarta 57292, Indonesia
+              Addis Ababa, Ethiopia
             </p>
           </div>
 
@@ -62,11 +62,8 @@ export default function Footer() {
               EMAIL ADDRESS
             </h4>
             <div className="space-y-1.5 font-sans text-xs text-gray-500 font-light">
-              <a href="mailto:halloj@dewadewi.com" className="block hover:text-black transition-colors">
-                halloj@dewadewi.com
-              </a>
-              <a href="mailto:sudeis@dev.io" className="block hover:text-black transition-colors">
-                sudeis@dev.io
+              <a href="mailto:sudeisfed@gmail.com" className="block hover:text-black transition-colors">
+                sudeisfed@gmail.com
               </a>
             </div>
           </div>
@@ -77,11 +74,11 @@ export default function Footer() {
               PHONE NUMBER
             </h4>
             <div className="space-y-1.5 font-sans text-xs text-gray-500 font-light">
-              <a href="tel:+02711314564" className="block hover:text-black transition-colors">
-                (0271) 131 4564 232
+              <a href="tel:+251974126234" className="block hover:text-black transition-colors">
+                +251974126234
               </a>
-              <a href="tel:+082124720342342" className="block hover:text-black transition-colors">
-                082124720342342
+              <a href="tel:+251713096234" className="block hover:text-black transition-colors">
+                +251713096234
               </a>
             </div>
           </div>
@@ -91,7 +88,7 @@ export default function Footer() {
         {/* Bottom copyright alignment row */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 font-sans text-xs text-gray-400" id="footer-bottom">
           <div className="flex items-center gap-1.5 text-gray-500 font-light">
-            <span>All rights reserved @Duwy</span>
+            <span>All rights reserved @sudeis Fedlu</span>
             <span>•</span>
             <span className="flex items-center gap-1 text-[10px] font-mono text-gray-400 font-bold">
               <Sparkles className="w-3 h-3 text-black animate-pulse" />

@@ -12,6 +12,7 @@ import AdminDashboard from './components/AdminDashboard';
 import AdminLogin from './components/AdminLogin';
 import { Project } from './types';
 import { Settings, Sparkles } from 'lucide-react';
+import { safeStorage } from './utils/safeStorage';
 
 const DEFAULT_HERO_IMAGE = '/src/assets/images/sudeis_portrait_1782228695665.jpg';
 const DEFAULT_ABOUT_IMAGE = '/src/assets/images/sudeis_portrait_1782228695665.jpg';
@@ -63,6 +64,45 @@ export default function App() {
   const [inquiryCount, setInquiryCount] = useState(0);
   const [preSelectedService, setPreSelectedService] = useState('');
   
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
+    return (safeStorage.getItem('sudeis_theme') as 'light' | 'dark' | 'system') || 'system';
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    
+    const applyTheme = () => {
+      if (theme === 'dark') {
+        root.classList.add('dark');
+      } else if (theme === 'light') {
+        root.classList.remove('dark');
+      } else {
+        const isSystemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (isSystemDark) {
+          root.classList.add('dark');
+        } else {
+          root.classList.remove('dark');
+        }
+      }
+    };
+
+    applyTheme();
+    safeStorage.setItem('sudeis_theme', theme);
+
+    if (theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const listener = (e: MediaQueryListEvent) => {
+        if (e.matches) {
+          root.classList.add('dark');
+        } else {
+          root.classList.remove('dark');
+        }
+      };
+      mediaQuery.addEventListener('change', listener);
+      return () => mediaQuery.removeEventListener('change', listener);
+    }
+  }, [theme]);
+  
   // Custom secure client-side router states
   const [currentRoute, setCurrentRoute] = useState<'public' | 'admin'>(() => {
     const path = window.location.pathname;
@@ -74,18 +114,18 @@ export default function App() {
   });
 
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('sudeis_admin_auth') === 'true';
+    return safeStorage.getItem('sudeis_admin_auth') === 'true';
   });
 
   // Dynamic portfolio customizer states
   const [heroImage, setHeroImage] = useState<string>(() => {
-    return localStorage.getItem('sudeis_hero_image') || DEFAULT_HERO_IMAGE;
+    return safeStorage.getItem('sudeis_hero_image') || DEFAULT_HERO_IMAGE;
   });
   const [aboutImage, setAboutImage] = useState<string>(() => {
-    return localStorage.getItem('sudeis_about_image') || DEFAULT_ABOUT_IMAGE;
+    return safeStorage.getItem('sudeis_about_image') || DEFAULT_ABOUT_IMAGE;
   });
   const [projects, setProjects] = useState<Project[]>(() => {
-    const saved = localStorage.getItem('sudeis_projects');
+    const saved = safeStorage.getItem('sudeis_projects');
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -98,20 +138,20 @@ export default function App() {
 
   // Keep local storage in sync
   useEffect(() => {
-    localStorage.setItem('sudeis_hero_image', heroImage);
+    safeStorage.setItem('sudeis_hero_image', heroImage);
   }, [heroImage]);
 
   useEffect(() => {
-    localStorage.setItem('sudeis_about_image', aboutImage);
+    safeStorage.setItem('sudeis_about_image', aboutImage);
   }, [aboutImage]);
 
   useEffect(() => {
-    localStorage.setItem('sudeis_projects', JSON.stringify(projects));
+    safeStorage.setItem('sudeis_projects', JSON.stringify(projects));
   }, [projects]);
 
   // Sync state with local storage to feed count to Header badge
   const updateInquiryCount = () => {
-    const saved = localStorage.getItem('sudeis_inquiries');
+    const saved = safeStorage.getItem('sudeis_inquiries');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -145,7 +185,7 @@ export default function App() {
     
     const handleStorageUpdate = () => {
       updateInquiryCount();
-      setIsAdminAuthenticated(localStorage.getItem('sudeis_admin_auth') === 'true');
+      setIsAdminAuthenticated(safeStorage.getItem('sudeis_admin_auth') === 'true');
     };
     window.addEventListener('storage', handleStorageUpdate);
 
@@ -212,7 +252,7 @@ export default function App() {
       return (
         <AdminLogin 
           onLoginSuccess={() => setIsAdminAuthenticated(true)} 
-          allowedEmail={localStorage.getItem('sudeis_admin_email') || 'sudeisfed@gmail.com'} 
+          allowedEmail={safeStorage.getItem('sudeis_admin_email') || 'sudeisfed@gmail.com'} 
         />
       );
     }
@@ -226,7 +266,7 @@ export default function App() {
         setAboutImage={setAboutImage}
         onResetDefaults={handleResetDefaults}
         onLogout={() => {
-          localStorage.removeItem('sudeis_admin_auth');
+          safeStorage.removeItem('sudeis_admin_auth');
           setIsAdminAuthenticated(false);
           window.location.hash = '';
         }}
@@ -243,6 +283,8 @@ export default function App() {
         onViewInbox={handleViewInbox}
         messageCount={inquiryCount}
         onOpenCMS={handleOpenCMS}
+        theme={theme}
+        onThemeChange={setTheme}
       />
 
       <main className="flex-1">
