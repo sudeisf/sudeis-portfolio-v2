@@ -127,7 +127,7 @@ export default function Portfolio({ projects }: PortfolioProps) {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-              className="bg-[#F6F6F8] rounded-[28px] w-full max-w-3xl overflow-hidden shadow-2xl relative z-10 border border-black/5 max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-250"
+              className="bg-[#F6F6F8] rounded-[28px] w-full max-w-5xl overflow-hidden shadow-2xl relative z-10 border border-black/5 max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-250"
               id="portfolio-detail-modal"
             >
               {/* Header Banner */}
