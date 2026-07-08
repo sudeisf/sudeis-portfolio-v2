@@ -1,6 +1,5 @@
 import express from 'express';
 import path from 'path';
-import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from 'dotenv';
 import { getPortfolioData, setPortfolioData, uploadToCloudinary, SUPABASE_SQL_SETUP } from './server/integrations.ts';
@@ -288,7 +287,8 @@ async function startServer() {
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
+    const viteModule = await import('vite');
+    const vite = await viteModule.createServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
