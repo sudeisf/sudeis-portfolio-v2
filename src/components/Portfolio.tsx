@@ -56,7 +56,7 @@ export default function Portfolio({ projects }: PortfolioProps) {
                 {isVideoUrl(proj.image) ? (
                   <video
                     src={proj.image}
-                    className="w-full h-full object-cover grayscale contrast-110 brightness-[0.98] group-hover:scale-105 group-hover:grayscale-0 transition-all duration-700 ease-out"
+                    className="w-full h-full object-cover contrast-110 brightness-[0.98] group-hover:scale-105 transition-all duration-700 ease-out"
                     muted
                     loop
                     playsInline
@@ -67,7 +67,7 @@ export default function Portfolio({ projects }: PortfolioProps) {
                   <img
                     src={proj.image}
                     alt={proj.title}
-                    className="w-full h-full object-cover grayscale contrast-110 brightness-[0.98] group-hover:scale-105 group-hover:grayscale-0 transition-all duration-700 ease-out"
+                    className="w-full h-full object-cover contrast-110 brightness-[0.98] group-hover:scale-105 transition-all duration-700 ease-out"
                     referrerPolicy="no-referrer"
                     id={`portfolio-img-${proj.id}`}
                   />
@@ -135,7 +135,7 @@ export default function Portfolio({ projects }: PortfolioProps) {
                 {isVideoUrl(selectedProject.image) ? (
                   <video
                     src={selectedProject.image}
-                    className="w-full h-auto max-h-[70vh] object-contain grayscale group-hover:grayscale-0 transition-all duration-300"
+                    className="w-full h-auto max-h-[70vh] object-contain transition-all duration-300"
                     controls
                     autoPlay
                     muted
@@ -146,7 +146,7 @@ export default function Portfolio({ projects }: PortfolioProps) {
                   <img
                     src={selectedProject.image}
                     alt={selectedProject.title}
-                    className="w-full h-auto max-h-[70vh] object-contain grayscale group-hover:grayscale-0 transition-all duration-300"
+                    className="w-full h-auto max-h-[70vh] object-contain transition-all duration-300"
                     referrerPolicy="no-referrer"
                     id="modal-banner-img"
                   />
