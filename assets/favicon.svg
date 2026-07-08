@@ -1,40 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
   <defs>
-    <!-- Ultra-cool high-contrast futuristic white/silver gradients -->
-    <linearGradient id="coolSGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FFFFFF" /> <!-- Pure White -->
-      <stop offset="50%" stop-color="#F4F4F5" /> <!-- Soft Silver -->
-      <stop offset="100%" stop-color="#D4D4D8" /> <!-- Metallic Slate -->
-    </linearGradient>
+    <!-- Deep premium dark gradient for the background tile -->
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#0B0C10" />
-      <stop offset="100%" stop-color="#030406" />
+      <stop offset="0%" stop-color="#0E0F12" />
+      <stop offset="100%" stop-color="#050507" />
     </linearGradient>
-    <filter id="subtleGlow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="0.8" result="blur" />
-      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    <!-- Delicate shadow filter to give the white 'S' depth -->
+    <filter id="premiumGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="1" stdDeviation="0.8" flood-color="#000000" flood-opacity="0.3"/>
     </filter>
   </defs>
 
-  <!-- Dark cyber-metallic slate background -->
-  <rect x="1" y="1" width="30" height="30" rx="8" fill="url(#bgGrad)" stroke="#27272A" stroke-width="1.2"/>
+  <!-- Clean rounded slate background tile with subtle premium border -->
+  <rect x="1" y="1" width="30" height="30" rx="9" fill="url(#bgGrad)" stroke="#1F2024" stroke-width="1.2"/>
   
-  <!-- Sharp geometric 'S' interlocking ribbons -->
-  <!-- Crisp, modern, sharp isometric-fold 'S' -->
-  <path d="M 8 9 
-           L 24 9 
-           L 24 13.5 
-           L 14 13.5 
-           L 24 18.5 
-           L 24 23 
-           L 8 23 
-           L 8 18.5 
-           L 18 18.5 
-           L 8 13.5 Z" 
-        fill="url(#coolSGrad)" 
-        filter="url(#subtleGlow)" />
-  
-  <!-- Micro tech circuit elements / sub-dots (Monochrome white/silver) -->
-  <circle cx="8" cy="9" r="1.2" fill="#FFFFFF" />
-  <circle cx="24" cy="23" r="1.2" fill="#A1A1AA" />
+  <!-- Symmetrical, geometrically perfect, bold white 'S' curve -->
+  <path d="M22 9h-8a3.5 3.5 0 0 0 0 7h4a3.5 3.5 0 0 1 0 7h-8" 
+        fill="none" 
+        stroke="#FFFFFF" 
+        stroke-width="4" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" 
+        filter="url(#premiumGlow)" />
 </svg>
