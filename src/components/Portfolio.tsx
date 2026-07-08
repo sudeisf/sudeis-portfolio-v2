@@ -131,11 +131,11 @@ export default function Portfolio({ projects }: PortfolioProps) {
               id="portfolio-detail-modal"
             >
               {/* Header Banner */}
-              <div className="relative aspect-video w-full bg-neutral-100 flex-shrink-0 border-b border-black/5">
+              <div className="relative w-full bg-neutral-100 flex-shrink-0 border-b border-black/5">
                 {isVideoUrl(selectedProject.image) ? (
                   <video
                     src={selectedProject.image}
-                    className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300"
+                    className="w-full h-auto max-h-[70vh] object-contain grayscale group-hover:grayscale-0 transition-all duration-300"
                     controls
                     autoPlay
                     muted
@@ -146,7 +146,7 @@ export default function Portfolio({ projects }: PortfolioProps) {
                   <img
                     src={selectedProject.image}
                     alt={selectedProject.title}
-                    className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300"
+                    className="w-full h-auto max-h-[70vh] object-contain grayscale group-hover:grayscale-0 transition-all duration-300"
                     referrerPolicy="no-referrer"
                     id="modal-banner-img"
                   />
