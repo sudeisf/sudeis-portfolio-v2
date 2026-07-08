@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from 'dotenv';
-import { getPortfolioData, setPortfolioData, uploadToCloudinary, SUPABASE_SQL_SETUP } from './server/integrations.ts';
+import { getPortfolioData, setPortfolioData, uploadToCloudinary, getSupabaseClient, configureCloudinary, SUPABASE_SQL_SETUP } from './server/integrations.ts';
 
 dotenv.config();
 
@@ -179,6 +179,10 @@ app.get('/api/portfolio', async (req, res) => {
     const resumeSourceSettings = await getPortfolioData('resumeSourceSettings', null);
     const resumeData = await getPortfolioData('resumeData', null);
 
+    // Expose configuration status to admin dashboard
+    const supabaseConfigured = !!getSupabaseClient();
+    const cloudinaryConfigured = configureCloudinary();
+
     res.json({
       heroImage,
       aboutImage,
@@ -186,7 +190,9 @@ app.get('/api/portfolio', async (req, res) => {
       adminEmail,
       passcode,
       resumeSourceSettings,
-      resumeData
+      resumeData,
+      supabaseConfigured,
+      cloudinaryConfigured
     });
   } catch (error: any) {
     console.error("Error fetching portfolio:", error);
@@ -260,10 +266,22 @@ app.delete('/api/inquiries/:id', async (req, res) => {
 
 // Cloudinary Upload endpoint for images and videos
 app.post('/api/upload', async (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
   try {
     const { file, resourceType } = req.body;
     if (!file) {
       return res.status(400).json({ error: "No media file/Base64 string provided." });
+    }
+
+    // Check Cloudinary config before attempting upload
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey = process.env.CLOUDINARY_API_KEY;
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+
+    if (!cloudName || !apiKey || !apiSecret) {
+      return res.status(503).json({
+        error: `Cloudinary is not configured on this server. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET environment variables on your VPS/host.`
+      });
     }
 
     const uploadedUrl = await uploadToCloudinary(file, resourceType || 'auto');
