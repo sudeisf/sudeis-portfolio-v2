@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { ResumeData, WorkExperience, EducationItem } from '../types';
 import { defaultResumeData, printResume } from '../utils/resume';
+import { apiFetch } from '../utils/api';
 
 interface CommaSeparatedInputProps {
   value: string[];
@@ -237,7 +238,7 @@ export default function ResumeBuilder() {
     setIsEnhancingSummary(true);
     setAiError(null);
     try {
-      const response = await fetch('/api/resume/generate', {
+      const response = await apiFetch('/api/resume/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -265,7 +266,7 @@ export default function ResumeBuilder() {
     setEnhancingExpId(id);
     setAiError(null);
     try {
-      const response = await fetch('/api/resume/generate', {
+      const response = await apiFetch('/api/resume/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -304,7 +305,7 @@ export default function ResumeBuilder() {
     setIsGeneratingFull(true);
     setAiError(null);
     try {
-      const response = await fetch('/api/resume/generate', {
+      const response = await apiFetch('/api/resume/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

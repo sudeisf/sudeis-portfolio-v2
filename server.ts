@@ -2,7 +2,23 @@ import express from 'express';
 import path from 'path';
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from 'dotenv';
-import { getPortfolioData, setPortfolioData, uploadToCloudinary, SUPABASE_SQL_SETUP } from './server/integrations.js';
+import {
+  getPortfolioData,
+  setPortfolioData,
+  uploadToCloudinary,
+  SUPABASE_SQL_SETUP,
+  isSupabaseConfigured,
+  isCloudinaryConfigured,
+} from './server/integrations.js';
+import {
+  requireAdmin,
+  getAdminEmail,
+  verifyAdminCredentials,
+  setAdminSessionCookie,
+  clearAdminSessionCookie,
+  getSessionFromRequest,
+  hashPasscode,
+} from './server/auth.js';
 
 dotenv.config();
 
@@ -27,12 +43,15 @@ function getGeminiClient() {
 
 const app = express();
 
+// Required for secure cookies behind Vercel's reverse proxy
+app.set('trust proxy', 1);
+
 // Support JSON request bodies with an increased limit for media uploads (base64 images/videos)
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// API Route for AI Resume Generation/Enhancement
-app.post('/api/resume/generate', async (req, res) => {
+// API Route for AI Resume Generation/Enhancement (admin only)
+app.post('/api/resume/generate', requireAdmin, async (req, res) => {
   try {
     const { task, payload } = req.body;
     const client = getGeminiClient();
@@ -166,16 +185,94 @@ Format the output strictly as a list of bullet points starting with '• ', sepa
   }
 });
 
+// --- ADMIN AUTH ROUTES ---
+
+app.post('/api/admin/login', async (req, res) => {
+  try {
+    const { email, passcode } = req.body;
+    if (!email || !passcode) {
+      return res.status(400).json({ error: 'Email and passcode are required.' });
+    }
+
+    const valid = await verifyAdminCredentials(email, passcode);
+    if (!valid) {
+      return res.status(401).json({ error: 'Invalid administrative credentials.' });
+    }
+
+    setAdminSessionCookie(res, email);
+
+    // Migrate legacy plaintext passcode to hash on successful login
+    const legacyPasscode = await getPortfolioData('passcode', null);
+    if (legacyPasscode && passcode === legacyPasscode) {
+      await setPortfolioData('passcodeHash', hashPasscode(passcode));
+      await setPortfolioData('passcode', null);
+    }
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Admin login error:', error);
+    res.status(500).json({ error: 'Failed to authenticate.' });
+  }
+});
+
+app.post('/api/admin/logout', (_req, res) => {
+  clearAdminSessionCookie(res);
+  res.json({ success: true });
+});
+
+app.get('/api/admin/verify', async (req, res) => {
+  const session = getSessionFromRequest(req);
+  if (!session) {
+    return res.json({ authenticated: false });
+  }
+
+  const allowedEmail = (await getAdminEmail()).trim().toLowerCase();
+  res.json({ authenticated: session.email === allowedEmail });
+});
+
+app.get('/api/admin/settings', requireAdmin, async (_req, res) => {
+  try {
+    const adminEmail = await getAdminEmail();
+    res.json({
+      adminEmail,
+      supabaseConfigured: isSupabaseConfigured(),
+      cloudinaryConfigured: isCloudinaryConfigured(),
+    });
+  } catch (error: any) {
+    console.error('Error fetching admin settings:', error);
+    res.status(500).json({ error: 'Failed to fetch admin settings.' });
+  }
+});
+
+app.post('/api/admin/security', requireAdmin, async (req, res) => {
+  try {
+    const { adminEmail, newPasscode } = req.body;
+
+    if (adminEmail) {
+      await setPortfolioData('adminEmail', adminEmail.trim());
+    }
+
+    if (newPasscode) {
+      await setPortfolioData('passcodeHash', hashPasscode(newPasscode));
+      // Remove legacy plaintext passcode if it exists
+      await setPortfolioData('passcode', null);
+    }
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error('Error updating security settings:', error);
+    res.status(500).json({ error: error.message || 'Failed to update security settings.' });
+  }
+});
+
 // --- SUPABASE & CLOUDINARY API ROUTES ---
 
-// Get full portfolio data (Hero image, about image, projects, resume data)
-app.get('/api/portfolio', async (req, res) => {
+// Public portfolio content (no credentials exposed)
+app.get('/api/portfolio', async (_req, res) => {
   try {
     const heroImage = await getPortfolioData('heroImage', null);
     const aboutImage = await getPortfolioData('aboutImage', null);
     const projects = await getPortfolioData('projects', null);
-    const adminEmail = await getPortfolioData('adminEmail', 'sudeisfed@gmail.com');
-    const passcode = await getPortfolioData('passcode', 'sudeis2026');
     const resumeSourceSettings = await getPortfolioData('resumeSourceSettings', null);
     const resumeData = await getPortfolioData('resumeData', null);
 
@@ -183,10 +280,10 @@ app.get('/api/portfolio', async (req, res) => {
       heroImage,
       aboutImage,
       projects,
-      adminEmail,
-      passcode,
       resumeSourceSettings,
-      resumeData
+      resumeData,
+      supabaseConfigured: isSupabaseConfigured(),
+      cloudinaryConfigured: isCloudinaryConfigured(),
     });
   } catch (error: any) {
     console.error("Error fetching portfolio:", error);
@@ -194,8 +291,8 @@ app.get('/api/portfolio', async (req, res) => {
   }
 });
 
-// Save specific portfolio keys
-app.post('/api/portfolio', async (req, res) => {
+// Save specific portfolio keys (admin only)
+app.post('/api/portfolio', requireAdmin, async (req, res) => {
   try {
     const { key, value } = req.body;
     if (!key) {
@@ -210,8 +307,8 @@ app.post('/api/portfolio', async (req, res) => {
   }
 });
 
-// Get contact inquiries
-app.get('/api/inquiries', async (req, res) => {
+// Get contact inquiries (admin only)
+app.get('/api/inquiries', requireAdmin, async (req, res) => {
   try {
     const inquiries = await getPortfolioData('inquiries', []);
     res.json(inquiries);
@@ -244,8 +341,19 @@ app.post('/api/inquiries', async (req, res) => {
   }
 });
 
-// Delete/Clear inquiries (for admin)
-app.delete('/api/inquiries/:id', async (req, res) => {
+// Clear all inquiries (admin only)
+app.delete('/api/inquiries', requireAdmin, async (_req, res) => {
+  try {
+    await setPortfolioData('inquiries', []);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("Error clearing inquiries:", error);
+    res.status(500).json({ error: "Failed to clear inquiries." });
+  }
+});
+
+// Delete a single inquiry (admin only)
+app.delete('/api/inquiries/:id', requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const existingInquiries = await getPortfolioData('inquiries', []);
@@ -258,8 +366,8 @@ app.delete('/api/inquiries/:id', async (req, res) => {
   }
 });
 
-// Cloudinary Upload endpoint for images and videos
-app.post('/api/upload', async (req, res) => {
+// Cloudinary Upload endpoint for images and videos (admin only)
+app.post('/api/upload', requireAdmin, async (req, res) => {
   try {
     const { file, resourceType } = req.body;
     if (!file) {
@@ -274,8 +382,8 @@ app.post('/api/upload', async (req, res) => {
   }
 });
 
-// Supabase SQL Helper endpoint
-app.get('/api/supabase-sql', (req, res) => {
+// Supabase SQL Helper endpoint (admin only)
+app.get('/api/supabase-sql', requireAdmin, (_req, res) => {
   res.json({ sql: SUPABASE_SQL_SETUP });
 });
 
@@ -283,7 +391,7 @@ app.get('/api/supabase-sql', (req, res) => {
 export default app;
 
 async function startServer() {
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {

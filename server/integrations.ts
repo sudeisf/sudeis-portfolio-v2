@@ -176,6 +176,17 @@ export async function setPortfolioData(key: string, value: any): Promise<boolean
   }
 }
 
+export function isSupabaseConfigured(): boolean {
+  return getSupabaseClient() !== null;
+}
+
+export function isCloudinaryConfigured(): boolean {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
+  const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
+  const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
+  return !!(cloudName && apiKey && apiSecret);
+}
+
 // SQL Script helper for the user
 export const SUPABASE_SQL_SETUP = `
 -- Run this SQL query in your Supabase SQL Editor to create the tables required for your Sudeis Fedlu Portfolio!
@@ -189,7 +200,11 @@ CREATE TABLE IF NOT EXISTS portfolio_settings (
 -- Enable row-level security (RLS)
 ALTER TABLE portfolio_settings ENABLE ROW LEVEL SECURITY;
 
--- Create policies so anyone can read the public settings but editing requires auth (or allow public access for your simple preview)
-CREATE POLICY "Allow public read access" ON portfolio_settings FOR SELECT USING (true);
-CREATE POLICY "Allow public upsert access" ON portfolio_settings FOR ALL USING (true);
+-- Public keys that are safe to read without authentication
+CREATE POLICY "Allow public read of portfolio content" ON portfolio_settings
+  FOR SELECT
+  USING (key IN ('heroImage', 'aboutImage', 'projects', 'resumeSourceSettings', 'resumeData'));
+
+-- Server writes use the service role key; do not expose write access to anonymous clients.
+-- If you add a Supabase service role on the server, use that client for upserts instead of the anon key.
 `;

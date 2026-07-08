@@ -1,6 +1,4 @@
 {
-  "name": "Sudeis Fedlu",
-  "description": "Sudeis F. - Full-Stack Developer Professional Portfolio detailing services, expertise, experience, and projects.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "name": "Sudeis Fedlu Portfolio",
+  "description": "Full-stack developer portfolio with admin CMS, contact form, and optional Supabase and Cloudinary integrations."
 }

@@ -33,6 +33,7 @@ import {
 } from 'lucide-react';
 import { Project, ContactMessage } from '../types';
 import { safeStorage } from '../utils/safeStorage';
+import { apiFetch } from '../utils/api';
 import ResumeBuilder from './ResumeBuilder';
 
 interface AdminDashboardProps {
@@ -81,12 +82,7 @@ export default function AdminDashboard({
   const [inquiries, setInquiries] = useState<ContactMessage[]>([]);
   const [selectedInquiry, setSelectedInquiry] = useState<ContactMessage | null>(null);
   
-  const [adminEmail, setAdminEmail] = useState(() => {
-    return safeStorage.getItem('sudeis_admin_email') || 'sudeisfed@gmail.com';
-  });
-  const [passcode, setPasscode] = useState(() => {
-    return safeStorage.getItem('sudeis_admin_passcode') || 'sudeis2026';
-  });
+  const [adminEmail, setAdminEmail] = useState('sudeisfed@gmail.com');
   const [newPasscode, setNewPasscode] = useState('');
   const [confirmPasscode, setConfirmPasscode] = useState('');
   const [securitySuccess, setSecuritySuccess] = useState('');
@@ -106,7 +102,7 @@ export default function AdminDashboard({
   // Load inquiries from Supabase with fallback
   const loadInquiries = async () => {
     try {
-      const res = await fetch('/api/inquiries');
+      const res = await apiFetch('/api/inquiries');
       if (res.ok) {
         const data = await res.json();
         setInquiries(data);
@@ -117,7 +113,6 @@ export default function AdminDashboard({
       console.error('Error loading inquiries from database', e);
     }
 
-    // Fallback
     const saved = safeStorage.getItem('sudeis_inquiries');
     if (saved) {
       try {
@@ -134,28 +129,25 @@ export default function AdminDashboard({
   useEffect(() => {
     loadInquiries();
 
-    // Fetch Database & Cloudinary statuses on load
-    fetch('/api/portfolio')
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
+    apiFetch('/api/admin/settings')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
         if (data) {
           setSupabaseConfigured(!!data.supabaseConfigured);
           setCloudinaryConfigured(!!data.cloudinaryConfigured);
           if (data.adminEmail) setAdminEmail(data.adminEmail);
-          if (data.passcode) setPasscode(data.passcode);
         }
       })
-      .catch(e => console.error("Error fetching system status:", e));
+      .catch((e) => console.error('Error fetching system status:', e));
 
-    // Fetch SQL setup script helper
-    fetch('/api/supabase-sql')
-      .then(res => res.ok ? res.json() : null)
-      .then(data => {
+    apiFetch('/api/supabase-sql')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
         if (data && data.sql) {
           setSqlSetupText(data.sql);
         }
       })
-      .catch(e => console.error("Error fetching SQL helper script:", e));
+      .catch((e) => console.error('Error fetching SQL helper script:', e));
   }, []);
 
   // Upload helper to Cloudinary
@@ -164,10 +156,9 @@ export default function AdminDashboard({
     setUploadProgressMsg(`Uploading ${file.name} to Cloudinary...`);
     try {
       const resourceType = file.type.startsWith('video/') ? 'video' : 'image';
-      const res = await fetch('/api/upload', {
+      const res = await apiFetch('/api/upload', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ file: base64, resourceType })
+        body: JSON.stringify({ file: base64, resourceType }),
       });
 
       if (!res.ok) {
@@ -312,56 +303,80 @@ export default function AdminDashboard({
   };
 
   // Delete Inquiry
-  const handleDeleteInquiry = (id: string) => {
-    if (confirm('Delete this client inquiry message permanently?')) {
-      const raw = safeStorage.getItem('sudeis_inquiries');
-      if (raw) {
-        try {
-          const parsed: ContactMessage[] = JSON.parse(raw);
-          const filtered = parsed.filter(m => m.id !== id);
-          safeStorage.setItem('sudeis_inquiries', JSON.stringify(filtered));
-          setInquiries(filtered.reverse());
-          if (selectedInquiry?.id === id) {
-            setSelectedInquiry(null);
-          }
-          // Dispatch custom event to trigger header update in other sections
-          window.dispatchEvent(new Event('storage'));
-        } catch (e) {
-          console.error(e);
+  const handleDeleteInquiry = async (id: string) => {
+    if (!confirm('Delete this client inquiry message permanently?')) return;
+
+    try {
+      const res = await apiFetch(`/api/inquiries/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        const filtered = inquiries.filter((m) => m.id !== id);
+        setInquiries(filtered);
+        safeStorage.setItem('sudeis_inquiries', JSON.stringify(filtered));
+        if (selectedInquiry?.id === id) {
+          setSelectedInquiry(null);
         }
+        window.dispatchEvent(new Event('storage'));
+        return;
       }
+    } catch (e) {
+      console.error(e);
     }
+
+    alert('Failed to delete inquiry. Please try again.');
   };
 
-  // Clear all inquiries
-  const handleClearInquiries = () => {
-    if (confirm('Are you sure you want to delete ALL submitted inquiries from your logs? This cannot be undone.')) {
-      safeStorage.setItem('sudeis_inquiries', JSON.stringify([]));
-      setInquiries([]);
-      setSelectedInquiry(null);
-      window.dispatchEvent(new Event('storage'));
+  const handleClearInquiries = async () => {
+    if (!confirm('Are you sure you want to delete ALL submitted inquiries from your logs? This cannot be undone.')) {
+      return;
     }
+
+    try {
+      const res = await apiFetch('/api/inquiries', { method: 'DELETE' });
+      if (res.ok) {
+        safeStorage.setItem('sudeis_inquiries', JSON.stringify([]));
+        setInquiries([]);
+        setSelectedInquiry(null);
+        window.dispatchEvent(new Event('storage'));
+        return;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+
+    alert('Failed to clear inquiries. Please try again.');
   };
 
-  // Update passcode / email
-  const handleUpdateSecurity = (e: React.FormEvent) => {
+  const handleUpdateSecurity = async (e: React.FormEvent) => {
     e.preventDefault();
     setSecurityError('');
     setSecuritySuccess('');
 
-    if (newPasscode) {
-      if (newPasscode !== confirmPasscode) {
-        setSecurityError('Passcodes do not match.');
-        return;
-      }
-      safeStorage.setItem('sudeis_admin_passcode', newPasscode);
-      setPasscode(newPasscode);
+    if (newPasscode && newPasscode !== confirmPasscode) {
+      setSecurityError('Passcodes do not match.');
+      return;
     }
 
-    safeStorage.setItem('sudeis_admin_email', adminEmail);
-    setSecuritySuccess('Administrative configuration updated successfully.');
-    setNewPasscode('');
-    setConfirmPasscode('');
+    try {
+      const res = await apiFetch('/api/admin/security', {
+        method: 'POST',
+        body: JSON.stringify({
+          adminEmail,
+          newPasscode: newPasscode || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setSecurityError(data.error || 'Failed to update security settings.');
+        return;
+      }
+
+      setSecuritySuccess('Administrative configuration updated successfully.');
+      setNewPasscode('');
+      setConfirmPasscode('');
+    } catch {
+      setSecurityError('Unable to reach the server. Please try again.');
+    }
   };
 
   // Reorder projects

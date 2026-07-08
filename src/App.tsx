@@ -12,25 +12,38 @@ import Footer from './components/Footer';
 import AdminDashboard from './components/AdminDashboard';
 import AdminLogin from './components/AdminLogin';
 import { Project } from './types';
-import { Settings, Sparkles } from 'lucide-react';
 import { safeStorage } from './utils/safeStorage';
+import { apiFetch, verifyAdminSession } from './utils/api';
+import {
+  DEFAULT_HERO_IMAGE,
+  DEFAULT_ABOUT_IMAGE,
+  DEFAULT_PROJECTS,
+  DEFAULT_OG_IMAGE,
+} from './utils/defaults';
 
-const DEFAULT_HERO_IMAGE = '';
-const DEFAULT_ABOUT_IMAGE = '';
+const SITE_URL = import.meta.env.VITE_APP_URL || 'https://sudeis-portfolio-v2.vercel.app';
 
-const DEFAULT_PROJECTS: Project[] = [];
+function resolveImageUrl(value: string | null | undefined, fallback: string): string {
+  if (value && typeof value === 'string' && value.trim()) return value;
+  return fallback;
+}
+
+function resolveProjects(value: Project[] | null | undefined): Project[] {
+  if (Array.isArray(value) && value.length > 0) return value;
+  return DEFAULT_PROJECTS;
+}
 
 export default function App() {
   const [inquiryCount, setInquiryCount] = useState(0);
   const [preSelectedService, setPreSelectedService] = useState('');
-  
+
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
     return (safeStorage.getItem('sudeis_theme') as 'light' | 'dark' | 'system') || 'system';
   });
 
   useEffect(() => {
     const root = document.documentElement;
-    
+
     const applyTheme = () => {
       if (theme === 'dark') {
         root.classList.add('dark');
@@ -62,8 +75,7 @@ export default function App() {
       return () => mediaQuery.removeEventListener('change', listener);
     }
   }, [theme]);
-  
-  // Custom secure client-side router states
+
   const [currentRoute, setCurrentRoute] = useState<'public' | 'admin'>(() => {
     const path = window.location.pathname;
     const hash = window.location.hash;
@@ -73,7 +85,6 @@ export default function App() {
     return 'public';
   });
 
-  // Listen for hash and history changes to support client-side SPA navigation
   useEffect(() => {
     const handleNavigation = () => {
       const path = window.location.pathname;
@@ -87,85 +98,84 @@ export default function App() {
 
     window.addEventListener('hashchange', handleNavigation);
     window.addEventListener('popstate', handleNavigation);
-    
+
     return () => {
       window.removeEventListener('hashchange', handleNavigation);
       window.removeEventListener('popstate', handleNavigation);
     };
   }, []);
 
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
-    return safeStorage.getItem('sudeis_admin_auth') === 'true';
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  const [heroImage, setHeroImage] = useState<string>(() => {
+    return safeStorage.getItem('sudeis_hero_image') || DEFAULT_HERO_IMAGE;
+  });
+  const [aboutImage, setAboutImage] = useState<string>(() => {
+    return safeStorage.getItem('sudeis_about_image') || DEFAULT_ABOUT_IMAGE;
   });
 
-  // Dynamic portfolio customizer states
-  // We use empty defaults because the real data should come from Supabase.
-  const [heroImage, setHeroImage] = useState<string>('');
-  const [aboutImage, setAboutImage] = useState<string>('');
-  
   const [projects, setProjects] = useState<Project[]>(() => {
     const saved = safeStorage.getItem('sudeis_projects');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Clear out stale project data that relies on local hardcoded image paths
-        // because those break in production on mobile devices
-        const hasStaleImages = parsed.some((p: any) => typeof p.image === 'string' && p.image.startsWith('/src/'));
+        const hasStaleImages = parsed.some(
+          (p: Project) => typeof p.image === 'string' && p.image.startsWith('/src/')
+        );
         if (!hasStaleImages && Array.isArray(parsed) && parsed.length > 0) {
           return parsed;
         }
-      } catch (e) {
-        // Fallback
+      } catch {
+        // Fallback to defaults
       }
     }
     return DEFAULT_PROJECTS;
   });
 
-  // Fetch Supabase data on mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const authenticated = await verifyAdminSession();
+      setIsAdminAuthenticated(authenticated);
+      setAuthChecked(true);
+    };
+    checkAuth();
+  }, []);
+
   useEffect(() => {
     const loadPortfolioData = async () => {
       try {
         const res = await fetch('/api/portfolio');
         if (res.ok) {
           const data = await res.json();
-          if (data.heroImage) {
-            setHeroImage(data.heroImage);
-            safeStorage.setItem('sudeis_hero_image', data.heroImage);
-          }
-          if (data.aboutImage) {
-            setAboutImage(data.aboutImage);
-            safeStorage.setItem('sudeis_about_image', data.aboutImage);
-          }
-          if (data.projects) {
-            setProjects(data.projects);
-            safeStorage.setItem('sudeis_projects', JSON.stringify(data.projects));
-          }
-          if (data.adminEmail) {
-            safeStorage.setItem('sudeis_admin_email', data.adminEmail);
-          }
-          if (data.passcode) {
-            safeStorage.setItem('sudeis_admin_passcode', data.passcode);
-          }
+          const nextHero = resolveImageUrl(data.heroImage, DEFAULT_HERO_IMAGE);
+          const nextAbout = resolveImageUrl(data.aboutImage, DEFAULT_ABOUT_IMAGE);
+          const nextProjects = resolveProjects(data.projects);
+
+          setHeroImage(nextHero);
+          setAboutImage(nextAbout);
+          setProjects(nextProjects);
+          safeStorage.setItem('sudeis_hero_image', nextHero);
+          safeStorage.setItem('sudeis_about_image', nextAbout);
+          safeStorage.setItem('sudeis_projects', JSON.stringify(nextProjects));
         }
       } catch (err) {
-        console.error("Failed to fetch initial portfolio configurations from Supabase database", err);
+        console.error('Failed to fetch portfolio data', err);
       }
     };
     loadPortfolioData();
   }, []);
 
-  // Sync wrappers that save to Supabase database
   const handleSetHeroImage = async (url: string) => {
     setHeroImage(url);
     safeStorage.setItem('sudeis_hero_image', url);
     try {
-      await fetch('/api/portfolio', {
+      await apiFetch('/api/portfolio', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: 'heroImage', value: url })
+        body: JSON.stringify({ key: 'heroImage', value: url }),
       });
     } catch (e) {
-      console.error("Failed to save hero image to Supabase:", e);
+      console.error('Failed to save hero image:', e);
     }
   };
 
@@ -173,13 +183,12 @@ export default function App() {
     setAboutImage(url);
     safeStorage.setItem('sudeis_about_image', url);
     try {
-      await fetch('/api/portfolio', {
+      await apiFetch('/api/portfolio', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: 'aboutImage', value: url })
+        body: JSON.stringify({ key: 'aboutImage', value: url }),
       });
     } catch (e) {
-      console.error("Failed to save about image to Supabase:", e);
+      console.error('Failed to save about image:', e);
     }
   };
 
@@ -187,24 +196,22 @@ export default function App() {
     setProjects(updatedProjects);
     safeStorage.setItem('sudeis_projects', JSON.stringify(updatedProjects));
     try {
-      await fetch('/api/portfolio', {
+      await apiFetch('/api/portfolio', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: 'projects', value: updatedProjects })
+        body: JSON.stringify({ key: 'projects', value: updatedProjects }),
       });
     } catch (e) {
-      console.error("Failed to save projects to Supabase:", e);
+      console.error('Failed to save projects:', e);
     }
   };
 
-  // Sync state with local storage to feed count to Header badge
   const updateInquiryCount = () => {
     const saved = safeStorage.getItem('sudeis_inquiries');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         setInquiryCount(Array.isArray(parsed) ? parsed.length : 0);
-      } catch (e) {
+      } catch {
         setInquiryCount(0);
       }
     } else {
@@ -216,7 +223,6 @@ export default function App() {
     updateInquiryCount();
   }, []);
 
-  // Sync route and check authorization periodically
   useEffect(() => {
     const handleLocationChange = () => {
       const path = window.location.pathname;
@@ -230,10 +236,9 @@ export default function App() {
 
     window.addEventListener('hashchange', handleLocationChange);
     window.addEventListener('popstate', handleLocationChange);
-    
+
     const handleStorageUpdate = () => {
       updateInquiryCount();
-      setIsAdminAuthenticated(safeStorage.getItem('sudeis_admin_auth') === 'true');
     };
     window.addEventListener('storage', handleStorageUpdate);
 
@@ -258,17 +263,15 @@ export default function App() {
       const offsetPosition = elementPosition + window.pageYOffset - offset;
       window.scrollTo({
         top: offsetPosition,
-        behavior: 'smooth'
+        behavior: 'smooth',
       });
     }
   };
 
   const handleViewInbox = () => {
-    // Navigate straight to the secure admin inquiries tab if authenticated
     if (isAdminAuthenticated) {
       window.location.hash = 'admin';
     } else {
-      // Smoothly guide user-facing contact log drawer
       const contactEl = document.getElementById('contact');
       if (contactEl) {
         contactEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -294,8 +297,29 @@ export default function App() {
     window.location.hash = 'admin';
   };
 
-  // If Sudeis is viewing the Admin Portal route, render the Secure Login Gate or the Master Dashboard Page
+  const handleLogout = async () => {
+    try {
+      await apiFetch('/api/admin/logout', { method: 'POST' });
+    } catch {
+      // Continue logout even if request fails
+    }
+    setIsAdminAuthenticated(false);
+    window.location.hash = '';
+  };
+
+  const ogImageUrl = DEFAULT_OG_IMAGE.startsWith('http')
+    ? DEFAULT_OG_IMAGE
+    : `${SITE_URL}${DEFAULT_OG_IMAGE}`;
+
   if (currentRoute === 'admin') {
+    if (!authChecked) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-[#F6F6F8] dark:bg-[#0B0B0C] text-gray-500 text-xs font-mono tracking-widest uppercase">
+          Verifying session...
+        </div>
+      );
+    }
+
     if (!isAdminAuthenticated) {
       return (
         <>
@@ -304,15 +328,15 @@ export default function App() {
             <meta name="description" content="Secure administration gateway for Sudeis Fedlu's digital workspace portfolio." />
             <meta name="robots" content="noindex, nofollow" />
           </Helmet>
-          <AdminLogin 
-            onLoginSuccess={() => setIsAdminAuthenticated(true)} 
-            allowedEmail={safeStorage.getItem('sudeis_admin_email') || 'sudeisfed@gmail.com'} 
+          <AdminLogin
+            onLoginSuccess={() => setIsAdminAuthenticated(true)}
             theme={theme}
             onThemeChange={setTheme}
           />
         </>
       );
     }
+
     return (
       <>
         <Helmet>
@@ -320,7 +344,7 @@ export default function App() {
           <meta name="description" content="Manage and customize portfolio sections, showcase items, and user-facing experiences." />
           <meta name="robots" content="noindex, nofollow" />
         </Helmet>
-        <AdminDashboard 
+        <AdminDashboard
           projects={projects}
           setProjects={handleSetProjects}
           heroImage={heroImage}
@@ -330,17 +354,12 @@ export default function App() {
           onResetDefaults={handleResetDefaults}
           theme={theme}
           onThemeChange={setTheme}
-          onLogout={() => {
-            safeStorage.removeItem('sudeis_admin_auth');
-            setIsAdminAuthenticated(false);
-            window.location.hash = '';
-          }}
+          onLogout={handleLogout}
         />
       </>
     );
   }
 
-  // Otherwise, render the gorgeous interactive public-facing showcase
   return (
     <div className="min-h-screen bg-[#FDFCFB] text-[#1A1A1A] selection:bg-black selection:text-white antialiased font-sans flex flex-col justify-between">
       <Helmet>
@@ -348,23 +367,20 @@ export default function App() {
         <meta name="description" content="Explore Sudeis Fedlu's portfolio. High-performance software engineering, analytics dashboards, minimal responsive architectures, and pixel-perfect design solutions based in Addis Ababa, Ethiopia." />
         <meta name="keywords" content="Sudeis Fedlu, Full Stack Developer, Addis Ababa, Ethiopia, Software Engineer, Web Developer, React, Node.js, Tailwind CSS, Portfolio" />
         <meta name="author" content="Sudeis Fedlu" />
-        
-        {/* OpenGraph / Facebook */}
+
         <meta property="og:type" content="website" />
         <meta property="og:title" content="Sudeis Fedlu | Full Stack Developer & Digital Architect" />
         <meta property="og:description" content="Explore Sudeis Fedlu's portfolio. High-performance software engineering, analytics dashboards, minimal responsive architectures, and pixel-perfect design solutions based in Addis Ababa, Ethiopia." />
-        <meta property="og:url" content="https://sudeis-portfolio-v2.vercel.app/" />
-        <meta property="og:image" content="/src/assets/images/sudeis_portrait_1782228695665.jpg" />
-        
-        {/* Twitter */}
+        <meta property="og:url" content={SITE_URL} />
+        <meta property="og:image" content={ogImageUrl} />
+
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content="Sudeis Fedlu | Full Stack Developer & Digital Architect" />
         <meta name="twitter:description" content="Explore Sudeis Fedlu's portfolio. High-performance software engineering, analytics dashboards, minimal responsive architectures, and pixel-perfect design solutions based in Addis Ababa, Ethiopia." />
-        <meta name="twitter:image" content="/src/assets/images/sudeis_portrait_1782228695665.jpg" />
+        <meta name="twitter:image" content={ogImageUrl} />
       </Helmet>
-      {/* Dynamic Header */}
-      <Header 
-        onStartProject={() => handleStartProject()} 
+      <Header
+        onStartProject={() => handleStartProject()}
         onViewInbox={handleViewInbox}
         messageCount={inquiryCount}
         onOpenCMS={handleOpenCMS}
@@ -373,34 +389,16 @@ export default function App() {
       />
 
       <main className="flex-1">
-        {/* Hero Segment */}
         <Hero portraitPath={heroImage} />
-
-        {/* Endless skills ticker tape */}
         <SkillsTicker />
-
-        {/* Detailed About Me block */}
         <AboutMe portraitPath={aboutImage} />
-
-        {/* Services Showcase & CTA */}
         <Services onStartProject={handleStartProject} />
-
-        {/* Interactive Growth Experience Timeline */}
         <Experience />
-
-        {/* Detailed Portfoli grid gallery */}
         <Portfolio projects={projects} />
-
-        {/* Connect & Estimator Panel */}
-        <ContactForm 
-          onSuccess={handleSuccessfulDispatch} 
-          preSelectedService={preSelectedService}
-        />
+        <ContactForm onSuccess={handleSuccessfulDispatch} preSelectedService={preSelectedService} />
       </main>
 
-      {/* Structured precise Footer columns */}
       <Footer />
     </div>
   );
 }
-

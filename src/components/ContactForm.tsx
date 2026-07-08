@@ -23,32 +23,16 @@ export default function ContactForm({ onSuccess, isOpen = false, onClose, preSel
   const [submittedInquiries, setSubmittedInquiries] = useState<ContactMessage[]>([]);
   const [showAdminLogs, setShowAdminLogs] = useState(false);
 
-  // Load inquiries from database/localStorage
+  // Load locally cached inquiries for this browser session only
   useEffect(() => {
-    const loadInquiries = async () => {
+    const saved = safeStorage.getItem('sudeis_inquiries');
+    if (saved) {
       try {
-        const res = await fetch('/api/inquiries');
-        if (res.ok) {
-          const data = await res.json();
-          setSubmittedInquiries(data);
-          safeStorage.setItem('sudeis_inquiries', JSON.stringify(data));
-          return;
-        }
+        setSubmittedInquiries(JSON.parse(saved));
       } catch (e) {
-        console.error('Error fetching inquiries from database', e);
+        console.error('Error loading inquiries from local storage', e);
       }
-
-      // Fallback
-      const saved = safeStorage.getItem('sudeis_inquiries');
-      if (saved) {
-        try {
-          setSubmittedInquiries(JSON.parse(saved));
-        } catch (e) {
-          console.error('Error loading inquiries from local storage', e);
-        }
-      }
-    };
-    loadInquiries();
+    }
   }, [isSubmitted]);
 
   // Handle pre-selection of project type
