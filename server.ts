@@ -266,28 +266,40 @@ app.delete('/api/inquiries/:id', async (req, res) => {
 
 // Cloudinary Upload endpoint for images and videos
 app.post('/api/upload', async (req, res) => {
+  console.log("--> Incoming POST /api/upload request");
   res.setHeader('Content-Type', 'application/json');
   try {
     const { file, resourceType } = req.body;
     if (!file) {
+      console.warn("Upload failed: No media file/Base64 string provided in request body.");
       return res.status(400).json({ error: "No media file/Base64 string provided." });
     }
+    
+    console.log(`Upload request received. Resource type: ${resourceType || 'auto'}. File payload length: ${file.length} characters.`);
 
     // Check Cloudinary config before attempting upload
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
     const apiKey = process.env.CLOUDINARY_API_KEY;
     const apiSecret = process.env.CLOUDINARY_API_SECRET;
+    
+    console.log("Checking Cloudinary Environment Variables:");
+    console.log(`- CLOUDINARY_CLOUD_NAME is set: ${!!cloudName} (Value starts with: ${cloudName ? cloudName.substring(0, 3) + '...' : 'N/A'})`);
+    console.log(`- CLOUDINARY_API_KEY is set: ${!!apiKey}`);
+    console.log(`- CLOUDINARY_API_SECRET is set: ${!!apiSecret}`);
 
     if (!cloudName || !apiKey || !apiSecret) {
-      return res.status(503).json({
-        error: `Cloudinary is not configured on this server. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET environment variables on your VPS/host.`
-      });
+      const errMsg = `Cloudinary is not configured on this server. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET environment variables on your VPS/host.`;
+      console.error(`Upload aborted: ${errMsg}`);
+      return res.status(503).json({ error: errMsg });
     }
 
+    console.log("Calling uploadToCloudinary integration function...");
     const uploadedUrl = await uploadToCloudinary(file, resourceType || 'auto');
+    console.log(`Upload successful. Resulting URL: ${uploadedUrl}`);
     res.json({ url: uploadedUrl });
   } catch (error: any) {
-    console.error("Cloudinary upload route error:", error);
+    console.error("Cloudinary upload route error details:");
+    console.error(error);
     res.status(500).json({ error: error.message || "Failed to upload file to Cloudinary." });
   }
 });
