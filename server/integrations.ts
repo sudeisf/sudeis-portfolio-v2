@@ -12,11 +12,26 @@ let cloudinaryConfigured = false;
 export function getSupabaseClient() {
   if (supabaseInstance) return supabaseInstance;
 
-  const url = process.env.SUPABASE_URL;
-  const anonKey = process.env.SUPABASE_ANON_KEY;
+  const url = process.env.SUPABASE_URL?.trim();
+  const anonKey = process.env.SUPABASE_ANON_KEY?.trim();
 
-  if (!url || !anonKey) {
+  if (!url || !anonKey || url === "" || anonKey === "") {
     console.warn("⚠️ Supabase credentials not fully configured in environment variables. Falling back to local/in-memory storage.");
+    return null;
+  }
+
+  // Validate that url actually starts with http:// or https:// and isn't a generic placeholder
+  const isValidUrl = (urlString: string) => {
+    try {
+      const parsed = new URL(urlString);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
+
+  if (!isValidUrl(url) || url.includes('placeholder') || url.includes('<your-') || url.includes('YOUR_')) {
+    console.warn("⚠️ Supabase URL is not a valid HTTP/HTTPS URL or is a placeholder. Falling back to local/in-memory storage.");
     return null;
   }
 
@@ -25,7 +40,7 @@ export function getSupabaseClient() {
     console.log("⚡ Supabase Client initialized successfully.");
     return supabaseInstance;
   } catch (error) {
-    console.error("❌ Failed to initialize Supabase client:", error);
+    console.warn("⚠️ Failed to initialize Supabase client with supplied credentials. Falling back to local/in-memory storage:", error);
     return null;
   }
 }
