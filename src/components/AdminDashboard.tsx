@@ -34,6 +34,7 @@ import {
 import { Project, ContactMessage } from '../types';
 import { safeStorage } from '../utils/safeStorage';
 import { apiFetch } from '../utils/api';
+import { uploadMedia } from '../utils/upload';
 import ResumeBuilder from './ResumeBuilder';
 
 interface AdminDashboardProps {
@@ -90,7 +91,10 @@ export default function AdminDashboard({
 
   // Supabase and Cloudinary dynamic indicators
   const [supabaseConfigured, setSupabaseConfigured] = useState(false);
+  const [supabaseTableReady, setSupabaseTableReady] = useState(false);
+  const [supabaseServiceRole, setSupabaseServiceRole] = useState(false);
   const [cloudinaryConfigured, setCloudinaryConfigured] = useState(false);
+  const [directUploadEnabled, setDirectUploadEnabled] = useState(false);
   const [sqlSetupText, setSqlSetupText] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgressMsg, setUploadProgressMsg] = useState('');
@@ -134,7 +138,10 @@ export default function AdminDashboard({
       .then((data) => {
         if (data) {
           setSupabaseConfigured(!!data.supabaseConfigured);
+          setSupabaseTableReady(!!data.supabaseTableReady);
+          setSupabaseServiceRole(!!data.supabaseServiceRole);
           setCloudinaryConfigured(!!data.cloudinaryConfigured);
+          setDirectUploadEnabled(!!data.directUploadEnabled);
           if (data.adminEmail) setAdminEmail(data.adminEmail);
         }
       })
@@ -150,48 +157,46 @@ export default function AdminDashboard({
       .catch((e) => console.error('Error fetching SQL helper script:', e));
   }, []);
 
-  // Upload helper to Cloudinary
-  const uploadMediaToCloudinary = async (base64: string, file: File): Promise<string> => {
+  const uploadMediaToCloudinary = async (file: File): Promise<string> => {
     setIsUploading(true);
-    setUploadProgressMsg(`Uploading ${file.name} to Cloudinary...`);
     try {
-      const resourceType = file.type.startsWith('video/') ? 'video' : 'image';
-      const res = await apiFetch('/api/upload', {
-        method: 'POST',
-        body: JSON.stringify({ file: base64, resourceType }),
-      });
-
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || "Upload failed");
-      }
-
-      const data = await res.json();
+      return await uploadMedia(file, setUploadProgressMsg);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Upload failed';
+      console.error('Upload failed:', e);
+      alert(`Upload failed: ${message}\nCheck Cloudinary env vars and upload preset.`);
+      throw e;
+    } finally {
       setIsUploading(false);
       setUploadProgressMsg('');
-      return data.url;
-    } catch (e: any) {
-      console.error("Cloudinary upload failed:", e);
-      setIsUploading(false);
-      setUploadProgressMsg('');
-      alert(`Could not upload to Cloudinary: ${e.message || 'Please verify your CLOUDINARY_* environment settings.'}\nUsing Local fallback.`);
-      return base64; // Fallback to base64 so user can still see and edit everything!
     }
   };
 
-  // Convert files and upload to Cloudinary
+  const handleSeedDatabase = async () => {
+    try {
+      const res = await apiFetch('/api/admin/seed-database', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to initialize database rows.');
+        return;
+      }
+      alert(`Database ready. Seeded: ${data.seeded?.join(', ') || 'none'}`);
+      setSupabaseTableReady(true);
+    } catch {
+      alert('Could not reach server to seed database.');
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, target: 'hero' | 'about' | 'project') => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = reader.result as string;
-        const url = await uploadMediaToCloudinary(base64, file);
-        if (target === 'hero') setHeroImage(url);
-        if (target === 'about') setAboutImage(url);
-        if (target === 'project') setProjImage(url);
-      };
-      reader.readAsDataURL(file);
+      uploadMediaToCloudinary(file)
+        .then((url) => {
+          if (target === 'hero') setHeroImage(url);
+          if (target === 'about') setAboutImage(url);
+          if (target === 'project') setProjImage(url);
+        })
+        .catch(() => {});
     }
   };
 
@@ -212,15 +217,13 @@ export default function AdminDashboard({
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
-      const reader = new FileReader();
-      reader.onloadend = async () => {
-        const base64 = reader.result as string;
-        const url = await uploadMediaToCloudinary(base64, file);
-        if (target === 'hero') setHeroImage(url);
-        if (target === 'about') setAboutImage(url);
-        if (target === 'project') setProjImage(url);
-      };
-      reader.readAsDataURL(file);
+      uploadMediaToCloudinary(file)
+        .then((url) => {
+          if (target === 'hero') setHeroImage(url);
+          if (target === 'about') setAboutImage(url);
+          if (target === 'project') setProjImage(url);
+        })
+        .catch(() => {});
     }
   };
 
@@ -1191,26 +1194,54 @@ export default function AdminDashboard({
                   <div className="flex items-center justify-between p-3 bg-[#F6F6F8] rounded-xl border border-black/5">
                     <div className="flex flex-col">
                       <span className="text-[10px] font-mono font-bold text-black uppercase">Supabase Cloud Database</span>
-                      <span className="text-[9px] text-gray-400">Stores projects, inquiries, and resume settings</span>
+                      <span className="text-[9px] text-gray-400">Table: portfolio_settings (hero, projects, inquiries…)</span>
                     </div>
-                    {supabaseConfigured ? (
-                      <span className="bg-emerald-100 text-emerald-700 text-[9px] font-mono font-bold px-2 py-1 rounded-full uppercase">Connected</span>
+                    {!supabaseConfigured ? (
+                      <span className="bg-amber-100 text-amber-700 text-[9px] font-mono font-bold px-2 py-1 rounded-full uppercase">Not connected</span>
+                    ) : supabaseTableReady ? (
+                      <span className="bg-emerald-100 text-emerald-700 text-[9px] font-mono font-bold px-2 py-1 rounded-full uppercase">Table ready</span>
                     ) : (
-                      <span className="bg-amber-100 text-amber-700 text-[9px] font-mono font-bold px-2 py-1 rounded-full uppercase" title="Add SUPABASE_URL and SUPABASE_ANON_KEY in settings">Local Fallback</span>
+                      <span className="bg-rose-100 text-rose-700 text-[9px] font-mono font-bold px-2 py-1 rounded-full uppercase">Run SQL below</span>
                     )}
                   </div>
+
+                  {supabaseConfigured && !supabaseServiceRole && (
+                    <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3 font-light">
+                      Add <code className="font-mono">SUPABASE_SERVICE_ROLE_KEY</code> in Vercel env vars so the server can save data (anon key cannot write).
+                    </p>
+                  )}
+
+                  {supabaseConfigured && supabaseTableReady && (
+                    <button
+                      type="button"
+                      onClick={handleSeedDatabase}
+                      className="w-full text-[10px] font-mono font-bold uppercase tracking-wider bg-black text-white py-2.5 rounded-xl hover:bg-neutral-800 cursor-pointer"
+                    >
+                      Initialize empty CMS rows
+                    </button>
+                  )}
 
                   <div className="flex items-center justify-between p-3 bg-[#F6F6F8] rounded-xl border border-black/5">
                     <div className="flex flex-col">
                       <span className="text-[10px] font-mono font-bold text-black uppercase">Cloudinary CDN Storage</span>
-                      <span className="text-[9px] text-gray-400">Optimizes hero, about, and project image/video uploads</span>
+                      <span className="text-[9px] text-gray-400">
+                        {directUploadEnabled ? 'Direct browser upload (fast)' : 'Server relay upload (slower)'}
+                      </span>
                     </div>
                     {cloudinaryConfigured ? (
-                      <span className="bg-emerald-100 text-emerald-700 text-[9px] font-mono font-bold px-2 py-1 rounded-full uppercase">Connected</span>
+                      <span className="bg-emerald-100 text-emerald-700 text-[9px] font-mono font-bold px-2 py-1 rounded-full uppercase">
+                        {directUploadEnabled ? 'Direct' : 'Relay'}
+                      </span>
                     ) : (
-                      <span className="bg-amber-100 text-amber-700 text-[9px] font-mono font-bold px-2 py-1 rounded-full uppercase" title="Add CLOUDINARY_* environment secrets in settings">Base64 Fallback</span>
+                      <span className="bg-amber-100 text-amber-700 text-[9px] font-mono font-bold px-2 py-1 rounded-full uppercase">Not configured</span>
                     )}
                   </div>
+
+                  {cloudinaryConfigured && !directUploadEnabled && (
+                    <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-xl p-3 font-light">
+                      For faster uploads, create an <strong>unsigned upload preset</strong> in Cloudinary and set <code className="font-mono">CLOUDINARY_UPLOAD_PRESET</code> in Vercel.
+                    </p>
+                  )}
                 </div>
 
                 {sqlSetupText && (

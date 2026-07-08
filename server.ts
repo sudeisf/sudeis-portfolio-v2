@@ -9,6 +9,11 @@ import {
   SUPABASE_SQL_SETUP,
   isSupabaseConfigured,
   isCloudinaryConfigured,
+  isSupabaseTableReady,
+  hasSupabaseServiceRole,
+  isDirectUploadEnabled,
+  getCloudinaryUploadConfig,
+  seedPortfolioDatabase,
 } from './server/integrations.js';
 import {
   requireAdmin,
@@ -233,14 +238,43 @@ app.get('/api/admin/verify', async (req, res) => {
 app.get('/api/admin/settings', requireAdmin, async (_req, res) => {
   try {
     const adminEmail = await getAdminEmail();
+    const tableReady = await isSupabaseTableReady();
     res.json({
       adminEmail,
       supabaseConfigured: isSupabaseConfigured(),
+      supabaseTableReady: tableReady,
+      supabaseServiceRole: hasSupabaseServiceRole(),
       cloudinaryConfigured: isCloudinaryConfigured(),
+      directUploadEnabled: isDirectUploadEnabled(),
     });
   } catch (error: any) {
     console.error('Error fetching admin settings:', error);
     res.status(500).json({ error: 'Failed to fetch admin settings.' });
+  }
+});
+
+app.get('/api/admin/upload-config', requireAdmin, (_req, res) => {
+  const config = getCloudinaryUploadConfig();
+  res.json({
+    directUploadEnabled: isDirectUploadEnabled(),
+    cloudName: config?.cloudName ?? null,
+    uploadPreset: config?.uploadPreset ?? null,
+  });
+});
+
+app.post('/api/admin/seed-database', requireAdmin, async (_req, res) => {
+  try {
+    const tableReady = await isSupabaseTableReady();
+    if (!tableReady) {
+      return res.status(400).json({
+        error: 'portfolio_settings table not found. Run the SQL migration in Supabase first.',
+      });
+    }
+    const result = await seedPortfolioDatabase();
+    res.json({ success: true, ...result });
+  } catch (error: any) {
+    console.error('Error seeding database:', error);
+    res.status(500).json({ error: error.message || 'Failed to seed database.' });
   }
 });
 

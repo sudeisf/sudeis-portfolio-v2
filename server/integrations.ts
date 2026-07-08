@@ -1,60 +1,101 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { v2 as cloudinary } from 'cloudinary';
 import dotenv from 'dotenv';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
 dotenv.config();
 
-// Cache instances
-let supabaseInstance: any = null;
+let supabaseInstance: SupabaseClient | null = null;
 let cloudinaryConfigured = false;
 
-// Initialize Supabase lazily and safely
-export function getSupabaseClient() {
+function isValidSupabaseUrl(urlString: string): boolean {
+  try {
+    const parsed = new URL(urlString);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function resolveSupabaseKey(): string | null {
+  const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (serviceRole) return serviceRole;
+
+  const anonKey = process.env.SUPABASE_ANON_KEY?.trim();
+  if (anonKey) {
+    console.warn(
+      '⚠️ SUPABASE_SERVICE_ROLE_KEY is not set. Using anon key — writes may fail until you add the service role key or run the SQL migration.'
+    );
+    return anonKey;
+  }
+
+  return null;
+}
+
+/** Server-side Supabase client (prefers service role so writes bypass RLS). */
+export function getSupabaseClient(): SupabaseClient | null {
   if (supabaseInstance) return supabaseInstance;
 
   const url = process.env.SUPABASE_URL?.trim();
-  const anonKey = process.env.SUPABASE_ANON_KEY?.trim();
+  const key = resolveSupabaseKey();
 
-  if (!url || !anonKey || url === "" || anonKey === "") {
-    console.warn("⚠️ Supabase credentials not fully configured in environment variables. Falling back to local/in-memory storage.");
+  if (!url || !key) {
+    console.warn('⚠️ Supabase not configured. Data falls back to in-memory storage (lost on restart).');
     return null;
   }
 
-  // Validate that url actually starts with http:// or https:// and isn't a generic placeholder
-  const isValidUrl = (urlString: string) => {
-    try {
-      const parsed = new URL(urlString);
-      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-    } catch {
-      return false;
-    }
-  };
-
-  if (!isValidUrl(url) || url.includes('placeholder') || url.includes('<your-') || url.includes('YOUR_')) {
-    console.warn("⚠️ Supabase URL is not a valid HTTP/HTTPS URL or is a placeholder. Falling back to local/in-memory storage.");
+  if (!isValidSupabaseUrl(url) || url.includes('placeholder') || url.includes('<your-') || url.includes('YOUR_')) {
+    console.warn('⚠️ Supabase URL is invalid or a placeholder. Falling back to in-memory storage.');
     return null;
   }
 
   try {
-    supabaseInstance = createClient(url, anonKey);
-    console.log("⚡ Supabase Client initialized successfully.");
+    supabaseInstance = createClient(url, key, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    console.log('⚡ Supabase client initialized.');
     return supabaseInstance;
   } catch (error) {
-    console.warn("⚠️ Failed to initialize Supabase client with supplied credentials. Falling back to local/in-memory storage:", error);
+    console.warn('⚠️ Failed to initialize Supabase client:', error);
     return null;
   }
 }
 
-// Initialize Cloudinary lazily and safely
-export function configureCloudinary() {
+export function isSupabaseConfigured(): boolean {
+  return getSupabaseClient() !== null;
+}
+
+export function hasSupabaseServiceRole(): boolean {
+  return !!process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+}
+
+/** Returns true when the portfolio_settings table exists and is reachable. */
+export async function isSupabaseTableReady(): Promise<boolean> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return false;
+
+  try {
+    const { error } = await supabase.from('portfolio_settings').select('key').limit(1);
+    if (!error) return true;
+    if (error.message?.includes('portfolio_settings') && error.message?.includes('does not exist')) {
+      return false;
+    }
+    // Permission errors usually mean table exists but key lacks access
+    return !error.message?.includes('does not exist');
+  } catch {
+    return false;
+  }
+}
+
+export function configureCloudinary(): boolean {
   if (cloudinaryConfigured) return true;
 
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-  const apiKey = process.env.CLOUDINARY_API_KEY;
-  const apiSecret = process.env.CLOUDINARY_API_SECRET;
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
+  const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
+  const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
 
   if (!cloudName || !apiKey || !apiSecret) {
-    console.warn("⚠️ Cloudinary credentials not fully configured in environment variables. Image uploads will fall back to Base64/local.");
     return false;
   }
 
@@ -63,57 +104,61 @@ export function configureCloudinary() {
       cloud_name: cloudName,
       api_key: apiKey,
       api_secret: apiSecret,
-      secure: true
+      secure: true,
     });
     cloudinaryConfigured = true;
-    console.log("⚡ Cloudinary SDK configured successfully.");
     return true;
   } catch (error) {
-    console.error("❌ Failed to configure Cloudinary:", error);
+    console.error('❌ Failed to configure Cloudinary:', error);
     return false;
   }
 }
 
-/**
- * Uploads a Base64 file or media URL to Cloudinary
- * Supports both images and videos
- */
-export async function uploadToCloudinary(base64Data: string, resourceType: 'image' | 'video' | 'auto' = 'auto'): Promise<string> {
-  const isConfigured = configureCloudinary();
-  if (!isConfigured) {
-    throw new Error("Cloudinary is not configured. Please supply Cloudinary env variables in settings.");
+export function isCloudinaryConfigured(): boolean {
+  return configureCloudinary();
+}
+
+/** Direct browser → Cloudinary uploads (faster than base64 via server). */
+export function isDirectUploadEnabled(): boolean {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
+  const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET?.trim();
+  return !!(cloudName && uploadPreset);
+}
+
+export function getCloudinaryUploadConfig(): { cloudName: string; uploadPreset: string } | null {
+  const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
+  const uploadPreset = process.env.CLOUDINARY_UPLOAD_PRESET?.trim();
+  if (!cloudName || !uploadPreset) return null;
+  return { cloudName, uploadPreset };
+}
+
+export async function uploadToCloudinary(
+  base64Data: string,
+  resourceType: 'image' | 'video' | 'auto' = 'auto'
+): Promise<string> {
+  if (!configureCloudinary()) {
+    throw new Error('Cloudinary is not configured. Add CLOUDINARY_* environment variables.');
   }
 
   try {
-    // If the string starts with data:xxx;base64, it's a data URI
-    // Cloudinary natively supports uploading base64 data URIs
     const uploadResult = await cloudinary.uploader.upload(base64Data, {
       resource_type: resourceType,
-      folder: 'sudeis_portfolio'
+      folder: 'sudeis_portfolio',
     });
     return uploadResult.secure_url;
-  } catch (error: any) {
-    console.error("❌ Cloudinary upload failed:", error);
-    throw new Error(error.message || "Cloudinary upload failed.");
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Cloudinary upload failed.';
+    console.error('❌ Cloudinary upload failed:', error);
+    throw new Error(message);
   }
 }
 
-// Simple in-memory fallback database to keep state synchronized for sessions when Supabase is unconfigured
-const memoryDb: Record<string, any> = {};
+const memoryDb: Record<string, unknown> = {};
 
-/**
- * Generic getter for Supabase key-value data storage
- * Falls back to in-memory if Supabase is unavailable
- * Schema used in Supabase:
- * Table: portfolio_settings
- * Columns:
- *  - key: text (primary key)
- *  - value: jsonb
- */
-export async function getPortfolioData(key: string, defaultValue: any): Promise<any> {
+export async function getPortfolioData<T>(key: string, defaultValue: T): Promise<T> {
   const supabase = getSupabaseClient();
   if (!supabase) {
-    return memoryDb[key] !== undefined ? memoryDb[key] : defaultValue;
+    return (memoryDb[key] !== undefined ? memoryDb[key] : defaultValue) as T;
   }
 
   try {
@@ -121,51 +166,44 @@ export async function getPortfolioData(key: string, defaultValue: any): Promise<
       .from('portfolio_settings')
       .select('value')
       .eq('key', key)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        // Row not found, which is normal for initial runs
-        return defaultValue;
-      }
-      // Table might not exist yet, let's notify and fallback
-      if (error.message && error.message.includes('relation "portfolio_settings" does not exist')) {
-        console.warn(`⚠️ Table "portfolio_settings" does not exist in your Supabase project yet. Please create it or use our auto-fallback. Querying fallback.`);
+      if (error.message?.includes('portfolio_settings') && error.message?.includes('does not exist')) {
+        console.warn('⚠️ Table portfolio_settings does not exist. Run the SQL in supabase/migrations/ or Admin → Security.');
       } else {
-        console.error(`Supabase fetch error for key "${key}":`, error);
+        console.error(`Supabase fetch error for "${key}":`, error);
       }
-      return memoryDb[key] !== undefined ? memoryDb[key] : defaultValue;
+      return (memoryDb[key] !== undefined ? memoryDb[key] : defaultValue) as T;
     }
 
-    return data?.value ?? defaultValue;
+    if (data?.value === null || data?.value === undefined) {
+      return defaultValue;
+    }
+
+    return data.value as T;
   } catch (err) {
     console.error(`Error querying Supabase for "${key}":`, err);
-    return memoryDb[key] !== undefined ? memoryDb[key] : defaultValue;
+    return (memoryDb[key] !== undefined ? memoryDb[key] : defaultValue) as T;
   }
 }
 
-/**
- * Generic setter for Supabase key-value data storage
- */
-export async function setPortfolioData(key: string, value: any): Promise<boolean> {
-  // Always update our local memory store as cache/fallback
+export async function setPortfolioData(key: string, value: unknown): Promise<boolean> {
   memoryDb[key] = value;
 
   const supabase = getSupabaseClient();
-  if (!supabase) {
-    return true;
-  }
+  if (!supabase) return true;
 
   try {
     const { error } = await supabase
       .from('portfolio_settings')
-      .upsert({ key, value }, { onConflict: 'key' });
+      .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
 
     if (error) {
-      if (error.message && error.message.includes('relation "portfolio_settings" does not exist')) {
-        console.warn(`⚠️ Table "portfolio_settings" does not exist in your Supabase project. Saving to memory fallback. Please run the SQL setup script to create the table in Supabase.`);
+      if (error.message?.includes('portfolio_settings') && error.message?.includes('does not exist')) {
+        console.warn('⚠️ Table portfolio_settings does not exist. Run the SQL migration in Supabase.');
       } else {
-        console.error(`Supabase upsert error for key "${key}":`, error);
+        console.error(`Supabase upsert error for "${key}":`, error);
       }
       return false;
     }
@@ -176,35 +214,58 @@ export async function setPortfolioData(key: string, value: any): Promise<boolean
   }
 }
 
-export function isSupabaseConfigured(): boolean {
-  return getSupabaseClient() !== null;
+/** Create empty rows for CMS keys when the table exists but has no data yet. */
+export async function seedPortfolioDatabase(): Promise<{ seeded: string[]; skipped: string[] }> {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    throw new Error('Supabase is not configured.');
+  }
+
+  const { data: existing, error } = await supabase.from('portfolio_settings').select('key');
+  if (error) {
+    throw new Error(error.message || 'Could not read portfolio_settings table.');
+  }
+
+  const existingKeys = new Set((existing || []).map((row) => row.key));
+  const seeded: string[] = [];
+  const skipped: string[] = [];
+
+  const defaults: Record<string, unknown> = {
+    heroImage: null,
+    aboutImage: null,
+    projects: [],
+    inquiries: [],
+    resumeSourceSettings: null,
+    resumeData: null,
+  };
+
+  for (const [key, value] of Object.entries(defaults)) {
+    if (existingKeys.has(key)) {
+      skipped.push(key);
+      continue;
+    }
+    await setPortfolioData(key, value);
+    seeded.push(key);
+  }
+
+  return { seeded, skipped };
 }
 
-export function isCloudinaryConfigured(): boolean {
-  const cloudName = process.env.CLOUDINARY_CLOUD_NAME?.trim();
-  const apiKey = process.env.CLOUDINARY_API_KEY?.trim();
-  const apiSecret = process.env.CLOUDINARY_API_SECRET?.trim();
-  return !!(cloudName && apiKey && apiSecret);
+function loadSqlSetup(): string {
+  try {
+    return readFileSync(join(process.cwd(), 'supabase/migrations/001_portfolio_settings.sql'), 'utf8');
+  } catch {
+    return SUPABASE_SQL_SETUP_FALLBACK;
+  }
 }
 
-// SQL Script helper for the user
-export const SUPABASE_SQL_SETUP = `
--- Run this SQL query in your Supabase SQL Editor to create the tables required for your Sudeis Fedlu Portfolio!
-
+const SUPABASE_SQL_SETUP_FALLBACK = `
 CREATE TABLE IF NOT EXISTS portfolio_settings (
   key text PRIMARY KEY,
-  value jsonb NOT NULL,
-  updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+  value jsonb NOT NULL DEFAULT 'null'::jsonb,
+  updated_at timestamptz NOT NULL DEFAULT timezone('utc', now())
 );
-
--- Enable row-level security (RLS)
 ALTER TABLE portfolio_settings ENABLE ROW LEVEL SECURITY;
-
--- Public keys that are safe to read without authentication
-CREATE POLICY "Allow public read of portfolio content" ON portfolio_settings
-  FOR SELECT
-  USING (key IN ('heroImage', 'aboutImage', 'projects', 'resumeSourceSettings', 'resumeData'));
-
--- Server writes use the service role key; do not expose write access to anonymous clients.
--- If you add a Supabase service role on the server, use that client for upserts instead of the anon key.
 `;
+
+export const SUPABASE_SQL_SETUP = loadSqlSetup();
