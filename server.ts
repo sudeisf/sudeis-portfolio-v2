@@ -296,6 +296,10 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
+    // Redirect direct /admin URL visits to /#admin so the client-side hash router picks it up correctly
+    app.get('/admin', (req, res) => {
+      res.redirect(302, '/#admin');
+    });
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
