@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
   <defs>
-    <!-- Ultra-cool high-contrast futuristic gradients -->
+    <!-- Ultra-cool high-contrast futuristic white/silver gradients -->
     <linearGradient id="coolSGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#10B981" /> <!-- Vivid Emerald -->
-      <stop offset="40%" stop-color="#34D399" /> <!-- Glowing Mint -->
-      <stop offset="100%" stop-color="#06B6D4" /> <!-- Cosmic Cyan/Teal -->
+      <stop offset="0%" stop-color="#FFFFFF" /> <!-- Pure White -->
+      <stop offset="50%" stop-color="#F4F4F5" /> <!-- Soft Silver -->
+      <stop offset="100%" stop-color="#D4D4D8" /> <!-- Metallic Slate -->
     </linearGradient>
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
       <stop offset="0%" stop-color="#0B0C10" />
@@ -17,7 +17,7 @@
   </defs>
 
   <!-- Dark cyber-metallic slate background -->
-  <rect x="1" y="1" width="30" height="30" rx="8" fill="url(#bgGrad)" stroke="#1F2937" stroke-width="1.2"/>
+  <rect x="1" y="1" width="30" height="30" rx="8" fill="url(#bgGrad)" stroke="#27272A" stroke-width="1.2"/>
   
   <!-- Sharp geometric 'S' interlocking ribbons -->
   <!-- Crisp, modern, sharp isometric-fold 'S' -->
@@ -34,7 +34,7 @@
         fill="url(#coolSGrad)" 
         filter="url(#subtleGlow)" />
   
-  <!-- Micro tech circuit elements / sub-dots -->
-  <circle cx="8" cy="9" r="1.2" fill="#06B6D4" />
-  <circle cx="24" cy="23" r="1.2" fill="#10B981" />
+  <!-- Micro tech circuit elements / sub-dots (Monochrome white/silver) -->
+  <circle cx="8" cy="9" r="1.2" fill="#FFFFFF" />
+  <circle cx="24" cy="23" r="1.2" fill="#A1A1AA" />
 </svg>
