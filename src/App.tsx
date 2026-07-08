@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet-async';
 import Header from './components/Header';
 import Hero from './components/Hero';
 import SkillsTicker from './components/SkillsTicker';
@@ -136,18 +137,81 @@ export default function App() {
     return DEFAULT_PROJECTS;
   });
 
-  // Keep local storage in sync
+  // Fetch Supabase data on mount
   useEffect(() => {
-    safeStorage.setItem('sudeis_hero_image', heroImage);
-  }, [heroImage]);
+    const loadPortfolioData = async () => {
+      try {
+        const res = await fetch('/api/portfolio');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.heroImage) {
+            setHeroImage(data.heroImage);
+            safeStorage.setItem('sudeis_hero_image', data.heroImage);
+          }
+          if (data.aboutImage) {
+            setAboutImage(data.aboutImage);
+            safeStorage.setItem('sudeis_about_image', data.aboutImage);
+          }
+          if (data.projects) {
+            setProjects(data.projects);
+            safeStorage.setItem('sudeis_projects', JSON.stringify(data.projects));
+          }
+          if (data.adminEmail) {
+            safeStorage.setItem('sudeis_admin_email', data.adminEmail);
+          }
+          if (data.passcode) {
+            safeStorage.setItem('sudeis_admin_passcode', data.passcode);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch initial portfolio configurations from Supabase database", err);
+      }
+    };
+    loadPortfolioData();
+  }, []);
 
-  useEffect(() => {
-    safeStorage.setItem('sudeis_about_image', aboutImage);
-  }, [aboutImage]);
+  // Sync wrappers that save to Supabase database
+  const handleSetHeroImage = async (url: string) => {
+    setHeroImage(url);
+    safeStorage.setItem('sudeis_hero_image', url);
+    try {
+      await fetch('/api/portfolio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'heroImage', value: url })
+      });
+    } catch (e) {
+      console.error("Failed to save hero image to Supabase:", e);
+    }
+  };
 
-  useEffect(() => {
-    safeStorage.setItem('sudeis_projects', JSON.stringify(projects));
-  }, [projects]);
+  const handleSetAboutImage = async (url: string) => {
+    setAboutImage(url);
+    safeStorage.setItem('sudeis_about_image', url);
+    try {
+      await fetch('/api/portfolio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'aboutImage', value: url })
+      });
+    } catch (e) {
+      console.error("Failed to save about image to Supabase:", e);
+    }
+  };
+
+  const handleSetProjects = async (updatedProjects: Project[]) => {
+    setProjects(updatedProjects);
+    safeStorage.setItem('sudeis_projects', JSON.stringify(updatedProjects));
+    try {
+      await fetch('/api/portfolio', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'projects', value: updatedProjects })
+      });
+    } catch (e) {
+      console.error("Failed to save projects to Supabase:", e);
+    }
+  };
 
   // Sync state with local storage to feed count to Header badge
   const updateInquiryCount = () => {
@@ -236,10 +300,10 @@ export default function App() {
     updateInquiryCount();
   };
 
-  const handleResetDefaults = () => {
-    setHeroImage(DEFAULT_HERO_IMAGE);
-    setAboutImage(DEFAULT_ABOUT_IMAGE);
-    setProjects(DEFAULT_PROJECTS);
+  const handleResetDefaults = async () => {
+    await handleSetHeroImage(DEFAULT_HERO_IMAGE);
+    await handleSetAboutImage(DEFAULT_ABOUT_IMAGE);
+    await handleSetProjects(DEFAULT_PROJECTS);
   };
 
   const handleOpenCMS = () => {
@@ -250,33 +314,70 @@ export default function App() {
   if (currentRoute === 'admin') {
     if (!isAdminAuthenticated) {
       return (
-        <AdminLogin 
-          onLoginSuccess={() => setIsAdminAuthenticated(true)} 
-          allowedEmail={safeStorage.getItem('sudeis_admin_email') || 'sudeisfed@gmail.com'} 
-        />
+        <>
+          <Helmet>
+            <title>Admin Login | Sudeis Fedlu</title>
+            <meta name="description" content="Secure administration gateway for Sudeis Fedlu's digital workspace portfolio." />
+            <meta name="robots" content="noindex, nofollow" />
+          </Helmet>
+          <AdminLogin 
+            onLoginSuccess={() => setIsAdminAuthenticated(true)} 
+            allowedEmail={safeStorage.getItem('sudeis_admin_email') || 'sudeisfed@gmail.com'} 
+            theme={theme}
+            onThemeChange={setTheme}
+          />
+        </>
       );
     }
     return (
-      <AdminDashboard 
-        projects={projects}
-        setProjects={setProjects}
-        heroImage={heroImage}
-        setHeroImage={setHeroImage}
-        aboutImage={aboutImage}
-        setAboutImage={setAboutImage}
-        onResetDefaults={handleResetDefaults}
-        onLogout={() => {
-          safeStorage.removeItem('sudeis_admin_auth');
-          setIsAdminAuthenticated(false);
-          window.location.hash = '';
-        }}
-      />
+      <>
+        <Helmet>
+          <title>Admin Dashboard | Sudeis Fedlu</title>
+          <meta name="description" content="Manage and customize portfolio sections, showcase items, and user-facing experiences." />
+          <meta name="robots" content="noindex, nofollow" />
+        </Helmet>
+        <AdminDashboard 
+          projects={projects}
+          setProjects={handleSetProjects}
+          heroImage={heroImage}
+          setHeroImage={handleSetHeroImage}
+          aboutImage={aboutImage}
+          setAboutImage={handleSetAboutImage}
+          onResetDefaults={handleResetDefaults}
+          theme={theme}
+          onThemeChange={setTheme}
+          onLogout={() => {
+            safeStorage.removeItem('sudeis_admin_auth');
+            setIsAdminAuthenticated(false);
+            window.location.hash = '';
+          }}
+        />
+      </>
     );
   }
 
   // Otherwise, render the gorgeous interactive public-facing showcase
   return (
     <div className="min-h-screen bg-[#FDFCFB] text-[#1A1A1A] selection:bg-black selection:text-white antialiased font-sans flex flex-col justify-between">
+      <Helmet>
+        <title>Sudeis Fedlu | Full Stack Developer & Digital Architect</title>
+        <meta name="description" content="Explore Sudeis Fedlu's portfolio. High-performance software engineering, analytics dashboards, minimal responsive architectures, and pixel-perfect design solutions based in Addis Ababa, Ethiopia." />
+        <meta name="keywords" content="Sudeis Fedlu, Full Stack Developer, Addis Ababa, Ethiopia, Software Engineer, Web Developer, React, Node.js, Tailwind CSS, Portfolio" />
+        <meta name="author" content="Sudeis Fedlu" />
+        
+        {/* OpenGraph / Facebook */}
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="Sudeis Fedlu | Full Stack Developer & Digital Architect" />
+        <meta property="og:description" content="Explore Sudeis Fedlu's portfolio. High-performance software engineering, analytics dashboards, minimal responsive architectures, and pixel-perfect design solutions based in Addis Ababa, Ethiopia." />
+        <meta property="og:url" content="https://sudeis-portfolio-v2.vercel.app/" />
+        <meta property="og:image" content="/src/assets/images/sudeis_portrait_1782228695665.jpg" />
+        
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Sudeis Fedlu | Full Stack Developer & Digital Architect" />
+        <meta name="twitter:description" content="Explore Sudeis Fedlu's portfolio. High-performance software engineering, analytics dashboards, minimal responsive architectures, and pixel-perfect design solutions based in Addis Ababa, Ethiopia." />
+        <meta name="twitter:image" content="/src/assets/images/sudeis_portrait_1782228695665.jpg" />
+      </Helmet>
       {/* Dynamic Header */}
       <Header 
         onStartProject={() => handleStartProject()} 

@@ -7,6 +7,15 @@ interface PortfolioProps {
   projects: Project[];
 }
 
+const isVideoUrl = (url?: string) => {
+  if (!url) return false;
+  if (url.startsWith('data:video/')) return true;
+  const videoExtensions = ['.mp4', '.mov', '.webm', '.ogg', '.mkv', '.avi'];
+  if (videoExtensions.some(ext => url.toLowerCase().endsWith(ext))) return true;
+  if (url.includes('/video/upload/')) return true;
+  return false;
+};
+
 export default function Portfolio({ projects }: PortfolioProps) {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -44,13 +53,25 @@ export default function Portfolio({ projects }: PortfolioProps) {
             >
               {/* Photo Card Frame */}
               <div className="aspect-[4/3] w-full bg-[#F6F6F8] rounded-[28px] overflow-hidden border border-black/5 shadow-sm relative transition-all duration-300 hover:scale-[1.01] hover:shadow-md">
-                <img
-                  src={proj.image}
-                  alt={proj.title}
-                  className="w-full h-full object-cover grayscale contrast-110 brightness-[0.98] group-hover:scale-105 group-hover:grayscale-0 transition-all duration-700 ease-out"
-                  referrerPolicy="no-referrer"
-                  id={`portfolio-img-${proj.id}`}
-                />
+                {isVideoUrl(proj.image) ? (
+                  <video
+                    src={proj.image}
+                    className="w-full h-full object-cover grayscale contrast-110 brightness-[0.98] group-hover:scale-105 group-hover:grayscale-0 transition-all duration-700 ease-out"
+                    muted
+                    loop
+                    playsInline
+                    autoPlay
+                    id={`portfolio-video-${proj.id}`}
+                  />
+                ) : (
+                  <img
+                    src={proj.image}
+                    alt={proj.title}
+                    className="w-full h-full object-cover grayscale contrast-110 brightness-[0.98] group-hover:scale-105 group-hover:grayscale-0 transition-all duration-700 ease-out"
+                    referrerPolicy="no-referrer"
+                    id={`portfolio-img-${proj.id}`}
+                  />
+                )}
                 
                 {/* Search / Magnify glass overlay interaction on hover */}
                 <AnimatePresence>
@@ -111,13 +132,25 @@ export default function Portfolio({ projects }: PortfolioProps) {
             >
               {/* Header Banner */}
               <div className="relative aspect-video w-full bg-neutral-100 flex-shrink-0 border-b border-black/5">
-                <img
-                  src={selectedProject.image}
-                  alt={selectedProject.title}
-                  className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300"
-                  referrerPolicy="no-referrer"
-                  id="modal-banner-img"
-                />
+                {isVideoUrl(selectedProject.image) ? (
+                  <video
+                    src={selectedProject.image}
+                    className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300"
+                    controls
+                    autoPlay
+                    muted
+                    playsInline
+                    id="modal-banner-video"
+                  />
+                ) : (
+                  <img
+                    src={selectedProject.image}
+                    alt={selectedProject.title}
+                    className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-300"
+                    referrerPolicy="no-referrer"
+                    id="modal-banner-img"
+                  />
+                )}
                 
                 {/* Close Trigger Button */}
                 <button

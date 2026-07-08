@@ -36,3 +36,46 @@ export interface ContactMessage {
   date: string;
   status: 'unread' | 'replied' | 'archived';
 }
+
+export interface WorkExperience {
+  id: string;
+  role: string;
+  company: string;
+  location: string;
+  period: string;
+  description: string; // Newline-separated bullets
+}
+
+export interface EducationItem {
+  id: string;
+  degree: string;
+  school: string;
+  location: string;
+  period: string;
+  details?: string;
+}
+
+export interface ResumeData {
+  name: string;
+  title: string;
+  email: string;
+  phone: string;
+  location: string;
+  website?: string;
+  linkedin?: string;
+  github?: string;
+  summary: string;
+  skills: {
+    languages: string[];
+    frameworks: string[];
+    tools: string[];
+  };
+  experience: WorkExperience[];
+  education: EducationItem[];
+  projects: {
+    title: string;
+    description: string;
+    technologies: string[];
+  }[];
+}
+

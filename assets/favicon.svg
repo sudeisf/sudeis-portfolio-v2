@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Rounded dark background matching Sudeis's aesthetic -->
+  <rect width="32" height="32" rx="10" fill="#0A0A0F"/>
+  <!-- Elegant geometric stylized 'S' with clean emerald/mint gradient strokes -->
+  <defs>
+    <linearGradient id="emeraldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#34D399" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+  </defs>
+  <!-- Stylized modern tech shape resembling a digital 'S' -->
+  <path d="M9 10 C9 8, 12 7, 16 7 C20 7, 23 8, 23 10 C23 13, 16 13, 16 16 C16 19, 23 19, 23 22 C23 24, 20 25, 16 25 C12 25, 9 24, 9 22" 
+        stroke="url(#emeraldGrad)" 
+        stroke-width="3" 
+        stroke-linecap="round" 
+        stroke-linejoin="round" 
+        fill="none" />
+  <!-- Accent tech point -->
+  <circle cx="16" cy="16" r="1.5" fill="#34D399" />
+</svg>

@@ -1,0 +1,17 @@
+services:
+  sudeis-portfolio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sudeis_portfolio_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      # If you need to supply the Gemini API Key or other environment variables on your VPS:
+      # - GEMINI_API_KEY=${GEMINI_API_KEY}
+    # Optional: read from a local .env file on your VPS
+    # env_file:
+    #   - .env

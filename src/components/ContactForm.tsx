@@ -23,16 +23,32 @@ export default function ContactForm({ onSuccess, isOpen = false, onClose, preSel
   const [submittedInquiries, setSubmittedInquiries] = useState<ContactMessage[]>([]);
   const [showAdminLogs, setShowAdminLogs] = useState(false);
 
-  // Load inquiries from localStorage
+  // Load inquiries from database/localStorage
   useEffect(() => {
-    const saved = safeStorage.getItem('sudeis_inquiries');
-    if (saved) {
+    const loadInquiries = async () => {
       try {
-        setSubmittedInquiries(JSON.parse(saved));
+        const res = await fetch('/api/inquiries');
+        if (res.ok) {
+          const data = await res.json();
+          setSubmittedInquiries(data);
+          safeStorage.setItem('sudeis_inquiries', JSON.stringify(data));
+          return;
+        }
       } catch (e) {
-        console.error('Error loading inquiries', e);
+        console.error('Error fetching inquiries from database', e);
       }
-    }
+
+      // Fallback
+      const saved = safeStorage.getItem('sudeis_inquiries');
+      if (saved) {
+        try {
+          setSubmittedInquiries(JSON.parse(saved));
+        } catch (e) {
+          console.error('Error loading inquiries from local storage', e);
+        }
+      }
+    };
+    loadInquiries();
   }, [isSubmitted]);
 
   // Handle pre-selection of project type
@@ -87,34 +103,48 @@ export default function ContactForm({ onSuccess, isOpen = false, onClose, preSel
 
   const estimation = getEstimation();
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!name || !email) return;
 
     setIsSubmitting(true);
 
-    // Simulate reliable API post latency
-    setTimeout(() => {
-      const newInquiry: ContactMessage = {
-        id: `inq-${Date.now()}`,
-        name,
-        email,
-        projectType,
-        budget,
-        message,
-        date: new Date().toLocaleDateString(undefined, {
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit'
-        }),
-        status: 'unread'
-      };
+    const newInquiry: ContactMessage = {
+      id: `inq-${Date.now()}`,
+      name,
+      email,
+      projectType,
+      budget,
+      message,
+      date: new Date().toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      }),
+      status: 'unread'
+    };
 
+    try {
+      const res = await fetch('/api/inquiries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newInquiry)
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const updated = [data.inquiry || newInquiry, ...submittedInquiries];
+        safeStorage.setItem('sudeis_inquiries', JSON.stringify(updated));
+        setSubmittedInquiries(updated);
+      } else {
+        throw new Error("Server error saving inquiry");
+      }
+    } catch (err) {
+      console.warn("Database storage failed, falling back to local storage:", err);
       const updated = [newInquiry, ...submittedInquiries];
       safeStorage.setItem('sudeis_inquiries', JSON.stringify(updated));
       setSubmittedInquiries(updated);
-
+    } finally {
       setIsSubmitting(false);
       setIsSubmitted(true);
       onSuccess();
@@ -123,7 +153,7 @@ export default function ContactForm({ onSuccess, isOpen = false, onClose, preSel
       setName('');
       setEmail('');
       setMessage('');
-    }, 1200);
+    }
   };
 
   const deleteInquiry = (id: string) => {

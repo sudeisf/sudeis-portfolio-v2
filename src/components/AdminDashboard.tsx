@@ -24,10 +24,16 @@ import {
   BadgeHelp,
   Briefcase,
   KeyRound,
-  FileCheck
+  FileCheck,
+  FileText,
+  Sun,
+  Moon,
+  Monitor,
+  Database
 } from 'lucide-react';
 import { Project, ContactMessage } from '../types';
 import { safeStorage } from '../utils/safeStorage';
+import ResumeBuilder from './ResumeBuilder';
 
 interface AdminDashboardProps {
   projects: Project[];
@@ -37,6 +43,8 @@ interface AdminDashboardProps {
   aboutImage: string;
   setAboutImage: (url: string) => void;
   onResetDefaults: () => void;
+  theme: 'light' | 'dark' | 'system';
+  onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
   onLogout: () => void;
 }
 
@@ -48,9 +56,11 @@ export default function AdminDashboard({
   aboutImage,
   setAboutImage,
   onResetDefaults,
+  theme,
+  onThemeChange,
   onLogout
 }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'images' | 'projects' | 'inquiries' | 'security'>('images');
+  const [activeTab, setActiveTab] = useState<'images' | 'projects' | 'inquiries' | 'resume' | 'security'>('images');
   
   // Project editing states
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
@@ -81,40 +91,114 @@ export default function AdminDashboard({
   const [confirmPasscode, setConfirmPasscode] = useState('');
   const [securitySuccess, setSecuritySuccess] = useState('');
   const [securityError, setSecurityError] = useState('');
+
+  // Supabase and Cloudinary dynamic indicators
+  const [supabaseConfigured, setSupabaseConfigured] = useState(false);
+  const [cloudinaryConfigured, setCloudinaryConfigured] = useState(false);
+  const [sqlSetupText, setSqlSetupText] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgressMsg, setUploadProgressMsg] = useState('');
   
   const heroInputRef = useRef<HTMLInputElement>(null);
   const aboutInputRef = useRef<HTMLInputElement>(null);
   const projInputRef = useRef<HTMLInputElement>(null);
 
-  // Load inquiries
-  const loadInquiries = () => {
+  // Load inquiries from Supabase with fallback
+  const loadInquiries = async () => {
+    try {
+      const res = await fetch('/api/inquiries');
+      if (res.ok) {
+        const data = await res.json();
+        setInquiries(data);
+        safeStorage.setItem('sudeis_inquiries', JSON.stringify(data));
+        return;
+      }
+    } catch (e) {
+      console.error('Error loading inquiries from database', e);
+    }
+
+    // Fallback
     const saved = safeStorage.getItem('sudeis_inquiries');
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed)) {
-          setInquiries(parsed.reverse()); // Show newest first
+          setInquiries(parsed);
         }
       } catch (e) {
-        console.error('Error parsing inquiries', e);
+        console.error('Error parsing inquiries fallback', e);
       }
     }
   };
 
   useEffect(() => {
     loadInquiries();
+
+    // Fetch Database & Cloudinary statuses on load
+    fetch('/api/portfolio')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data) {
+          setSupabaseConfigured(!!data.supabaseConfigured);
+          setCloudinaryConfigured(!!data.cloudinaryConfigured);
+          if (data.adminEmail) setAdminEmail(data.adminEmail);
+          if (data.passcode) setPasscode(data.passcode);
+        }
+      })
+      .catch(e => console.error("Error fetching system status:", e));
+
+    // Fetch SQL setup script helper
+    fetch('/api/supabase-sql')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data && data.sql) {
+          setSqlSetupText(data.sql);
+        }
+      })
+      .catch(e => console.error("Error fetching SQL helper script:", e));
   }, []);
 
-  // Convert files to base64
+  // Upload helper to Cloudinary
+  const uploadMediaToCloudinary = async (base64: string, file: File): Promise<string> => {
+    setIsUploading(true);
+    setUploadProgressMsg(`Uploading ${file.name} to Cloudinary...`);
+    try {
+      const resourceType = file.type.startsWith('video/') ? 'video' : 'image';
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file: base64, resourceType })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Upload failed");
+      }
+
+      const data = await res.json();
+      setIsUploading(false);
+      setUploadProgressMsg('');
+      return data.url;
+    } catch (e: any) {
+      console.error("Cloudinary upload failed:", e);
+      setIsUploading(false);
+      setUploadProgressMsg('');
+      alert(`Could not upload to Cloudinary: ${e.message || 'Please verify your CLOUDINARY_* environment settings.'}\nUsing Local fallback.`);
+      return base64; // Fallback to base64 so user can still see and edit everything!
+    }
+  };
+
+  // Convert files and upload to Cloudinary
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, target: 'hero' | 'about' | 'project') => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         const base64 = reader.result as string;
-        if (target === 'hero') setHeroImage(base64);
-        if (target === 'about') setAboutImage(base64);
-        if (target === 'project') setProjImage(base64);
+        const url = await uploadMediaToCloudinary(base64, file);
+        if (target === 'hero') setHeroImage(url);
+        if (target === 'about') setAboutImage(url);
+        if (target === 'project') setProjImage(url);
       };
       reader.readAsDataURL(file);
     }
@@ -138,11 +222,12 @@ export default function AdminDashboard({
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
       const reader = new FileReader();
-      reader.onloadend = () => {
+      reader.onloadend = async () => {
         const base64 = reader.result as string;
-        if (target === 'hero') setHeroImage(base64);
-        if (target === 'about') setAboutImage(base64);
-        if (target === 'project') setProjImage(base64);
+        const url = await uploadMediaToCloudinary(base64, file);
+        if (target === 'hero') setHeroImage(url);
+        if (target === 'about') setAboutImage(url);
+        if (target === 'project') setProjImage(url);
       };
       reader.readAsDataURL(file);
     }
@@ -304,21 +389,21 @@ export default function AdminDashboard({
   };
 
   return (
-    <div className="min-h-screen bg-[#F6F6F8] flex flex-col md:flex-row text-black" id="fullpage-admin-panel">
+    <div className="min-h-screen bg-[#F6F6F8] dark:bg-[#070708] flex flex-col md:flex-row text-black dark:text-white transition-colors duration-300" id="fullpage-admin-panel">
       
       {/* Left Navigation Sidebar */}
-      <div className="w-full md:w-64 bg-[#0C0C0E] text-white flex flex-col justify-between p-6 border-r border-white/5 md:fixed md:top-0 md:bottom-0 md:left-0 z-30">
+      <div className="w-full md:w-64 bg-white dark:bg-[#0C0C0E] text-black dark:text-white flex flex-col justify-between p-6 border-r border-black/10 dark:border-white/5 md:fixed md:top-0 md:bottom-0 md:left-0 z-30 transition-colors duration-300">
         <div>
           {/* Brand Heading */}
-          <div className="flex items-center gap-3 mb-8 pb-5 border-b border-white/5">
-            <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
-              <Settings className="w-4 h-4 text-emerald-400 animate-spin" style={{ animationDuration: '8s' }} />
+          <div className="flex items-center gap-3 mb-8 pb-5 border-b border-black/10 dark:border-white/5">
+            <div className="w-8 h-8 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 flex items-center justify-center">
+              <Settings className="w-4 h-4 text-emerald-600 dark:text-emerald-400 animate-spin" style={{ animationDuration: '8s' }} />
             </div>
             <div>
-              <h2 className="font-display text-sm font-black tracking-widest text-white uppercase">
+              <h2 className="font-display text-sm font-black tracking-widest text-black dark:text-white uppercase">
                 SUDEIS CO.
               </h2>
-              <span className="text-[9px] font-mono tracking-widest text-emerald-400 font-bold block uppercase mt-0.5">
+              <span className="text-[9px] font-mono tracking-widest text-emerald-600 dark:text-emerald-400 font-bold block uppercase mt-0.5">
                 PORTFOLIO CMS
               </span>
             </div>
@@ -330,8 +415,8 @@ export default function AdminDashboard({
               onClick={() => setActiveTab('images')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-display text-[11px] font-bold tracking-wider uppercase transition-all text-left cursor-pointer ${
                 activeTab === 'images'
-                  ? 'bg-white text-black font-black'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  ? 'bg-black text-white dark:bg-white dark:text-black font-black'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'
               }`}
             >
               <ImageIcon className="w-4 h-4" />
@@ -342,8 +427,8 @@ export default function AdminDashboard({
               onClick={() => setActiveTab('projects')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-display text-[11px] font-bold tracking-wider uppercase transition-all text-left cursor-pointer ${
                 activeTab === 'projects'
-                  ? 'bg-white text-black font-black'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  ? 'bg-black text-white dark:bg-white dark:text-black font-black'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'
               }`}
             >
               <FolderGit2 className="w-4 h-4" />
@@ -357,8 +442,8 @@ export default function AdminDashboard({
               }}
               className={`w-full flex items-center justify-between px-4 py-3 rounded-xl font-display text-[11px] font-bold tracking-wider uppercase transition-all text-left cursor-pointer ${
                 activeTab === 'inquiries'
-                  ? 'bg-white text-black font-black'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  ? 'bg-black text-white dark:bg-white dark:text-black font-black'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'
               }`}
             >
               <span className="flex items-center gap-3">
@@ -366,18 +451,30 @@ export default function AdminDashboard({
                 Client Inbox
               </span>
               {inquiries.length > 0 && (
-                <span className={`text-[9px] font-mono px-2 py-0.5 rounded-full ${activeTab === 'inquiries' ? 'bg-black text-white' : 'bg-emerald-500 text-black font-bold'}`}>
+                <span className={`text-[9px] font-mono px-2 py-0.5 rounded-full ${activeTab === 'inquiries' ? 'bg-white text-black dark:bg-black dark:text-white' : 'bg-emerald-500 text-black font-bold'}`}>
                   {inquiries.length}
                 </span>
               )}
             </button>
 
             <button
+              onClick={() => setActiveTab('resume')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-display text-[11px] font-bold tracking-wider uppercase transition-all text-left cursor-pointer ${
+                activeTab === 'resume'
+                  ? 'bg-black text-white dark:bg-white dark:text-black font-black'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              Resume Builder
+            </button>
+
+            <button
               onClick={() => setActiveTab('security')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-display text-[11px] font-bold tracking-wider uppercase transition-all text-left cursor-pointer ${
                 activeTab === 'security'
-                  ? 'bg-white text-black font-black'
-                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                  ? 'bg-black text-white dark:bg-white dark:text-black font-black'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'
               }`}
             >
               <KeyRound className="w-4 h-4" />
@@ -387,13 +484,13 @@ export default function AdminDashboard({
         </div>
 
         {/* Sidebar Footer Controls */}
-        <div className="space-y-3 pt-6 border-t border-white/5 mt-8">
+        <div className="space-y-3 pt-6 border-t border-black/10 dark:border-white/5 mt-8">
           <a
             href="#/"
             onClick={(e) => {
               window.location.hash = '';
             }}
-            className="w-full flex items-center justify-center gap-2 bg-[#1C1C1E] hover:bg-[#2C2C2E] text-white font-display text-[10px] font-black tracking-widest uppercase py-3 rounded-xl transition-all cursor-pointer border border-white/5"
+            className="w-full flex items-center justify-center gap-2 bg-black hover:bg-neutral-800 dark:bg-[#1C1C1E] dark:hover:bg-[#2C2C2E] text-white font-display text-[10px] font-black tracking-widest uppercase py-3 rounded-xl transition-all cursor-pointer border border-black/10 dark:border-white/5 shadow-sm"
           >
             <ExternalLink className="w-3.5 h-3.5 text-gray-400" />
             Go To Live Site
@@ -401,7 +498,7 @@ export default function AdminDashboard({
 
           <button
             onClick={onLogout}
-            className="w-full flex items-center justify-center gap-2 bg-red-900/20 hover:bg-red-900/30 text-red-400 font-display text-[10px] font-black tracking-widest uppercase py-3 rounded-xl transition-all cursor-pointer border border-red-900/30"
+            className="w-full flex items-center justify-center gap-2 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 font-display text-[10px] font-black tracking-widest uppercase py-3 rounded-xl transition-all cursor-pointer border border-red-500/20 dark:border-red-900/30"
           >
             <LogOut className="w-3.5 h-3.5" />
             End Session
@@ -413,26 +510,50 @@ export default function AdminDashboard({
       <div className="flex-1 md:ml-64 p-6 md:p-10 min-h-screen flex flex-col justify-between">
         
         {/* Content Header section */}
-        <div className="flex items-center justify-between border-b border-black/5 pb-5 mb-8">
+        <div className="flex items-center justify-between border-b border-black/5 dark:border-white/5 pb-5 mb-8">
           <div>
             <span className="text-[9px] font-mono font-bold uppercase tracking-widest text-gray-400">
               SECURE ADMIN CONTROL ENVIRONMENT
             </span>
-            <h1 className="font-display text-xl font-black tracking-tight text-black uppercase mt-0.5">
+            <h1 className="font-display text-xl font-black tracking-tight text-black dark:text-white uppercase mt-0.5">
               {activeTab === 'images' && 'Site Visual Identity'}
               {activeTab === 'projects' && 'Portfolio Publications'}
               {activeTab === 'inquiries' && 'Prospective Clients Inbox'}
+              {activeTab === 'resume' && 'AI Resume Builder'}
               {activeTab === 'security' && 'Admin security configurations'}
             </h1>
           </div>
           
           <div className="flex items-center gap-3">
-            <span className="text-[10px] font-mono text-gray-500 bg-black/5 px-3 py-1.5 rounded-full hidden sm:inline-block">
-              ACTIVE NODE: <strong className="text-black">{adminEmail}</strong>
+            {/* Segmented theme selector */}
+            <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 p-0.5 rounded-xl">
+              {[
+                { key: 'light', icon: <Sun className="w-3 h-3" />, title: 'Light' },
+                { key: 'dark', icon: <Moon className="w-3 h-3" />, title: 'Dark' },
+                { key: 'system', icon: <Monitor className="w-3 h-3" />, title: 'System' }
+              ].map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => onThemeChange(item.key as 'light' | 'dark' | 'system')}
+                  className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                    theme === item.key 
+                      ? 'bg-white dark:bg-zinc-800 text-black dark:text-white shadow-sm font-bold' 
+                      : 'text-gray-400 hover:text-black dark:hover:text-white'
+                  }`}
+                  title={item.title}
+                >
+                  {item.icon}
+                </button>
+              ))}
+            </div>
+
+            <span className="text-[10px] font-mono text-gray-500 dark:text-gray-400 bg-black/5 dark:bg-white/5 px-3 py-1.5 rounded-full hidden sm:inline-block">
+              ACTIVE NODE: <strong className="text-black dark:text-white">{adminEmail}</strong>
             </span>
             <button
               onClick={onLogout}
-              className="p-2 text-gray-400 hover:text-black transition-colors"
+              className="p-2 text-gray-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
               title="Logout Session"
             >
               <LogOut className="w-5 h-5" />
@@ -965,6 +1086,12 @@ export default function AdminDashboard({
             </div>
           )}
 
+          {activeTab === 'resume' && (
+            <div className="space-y-6 animate-fade-in" id="cms-tab-resume">
+              <ResumeBuilder />
+            </div>
+          )}
+
           {activeTab === 'security' && (
             <div className="space-y-8 max-w-xl animate-fade-in" id="cms-tab-security">
               
@@ -1035,6 +1162,67 @@ export default function AdminDashboard({
                 </form>
               </div>
 
+              {/* Database and CDN Configuration Diagnostics */}
+              <div className="bg-white border border-black/5 rounded-2xl p-6 shadow-sm space-y-4">
+                <div className="border-b border-black/5 pb-3">
+                  <h3 className="font-display text-xs font-black tracking-widest uppercase text-black flex items-center gap-1.5">
+                    <Database className="w-4 h-4 text-emerald-500" />
+                    SUPABASE & CLOUDINARY INTEGRATION
+                  </h3>
+                  <p className="text-[11px] text-gray-400 mt-1 font-light">Status indicators for your cloud-hosted database and content delivery networks.</p>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-[#F6F6F8] rounded-xl border border-black/5">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-mono font-bold text-black uppercase">Supabase Cloud Database</span>
+                      <span className="text-[9px] text-gray-400">Stores projects, inquiries, and resume settings</span>
+                    </div>
+                    {supabaseConfigured ? (
+                      <span className="bg-emerald-100 text-emerald-700 text-[9px] font-mono font-bold px-2 py-1 rounded-full uppercase">Connected</span>
+                    ) : (
+                      <span className="bg-amber-100 text-amber-700 text-[9px] font-mono font-bold px-2 py-1 rounded-full uppercase" title="Add SUPABASE_URL and SUPABASE_ANON_KEY in settings">Local Fallback</span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 bg-[#F6F6F8] rounded-xl border border-black/5">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-mono font-bold text-black uppercase">Cloudinary CDN Storage</span>
+                      <span className="text-[9px] text-gray-400">Optimizes hero, about, and project image/video uploads</span>
+                    </div>
+                    {cloudinaryConfigured ? (
+                      <span className="bg-emerald-100 text-emerald-700 text-[9px] font-mono font-bold px-2 py-1 rounded-full uppercase">Connected</span>
+                    ) : (
+                      <span className="bg-amber-100 text-amber-700 text-[9px] font-mono font-bold px-2 py-1 rounded-full uppercase" title="Add CLOUDINARY_* environment secrets in settings">Base64 Fallback</span>
+                    )}
+                  </div>
+                </div>
+
+                {sqlSetupText && (
+                  <div className="space-y-2 pt-2">
+                    <span className="block text-[9px] font-mono text-gray-400 uppercase tracking-widest">REQUIRED SQL SEED SCRIPT (SUPABASE)</span>
+                    <p className="text-[10px] text-gray-500 leading-relaxed font-light">
+                      Please copy the query below and execute it in your <strong>Supabase SQL Editor</strong> to construct the target key-value document tables.
+                    </p>
+                    <div className="relative font-mono">
+                      <pre className="text-[9px] font-mono bg-zinc-950 text-emerald-400 p-4 rounded-xl overflow-x-auto max-h-[160px] leading-relaxed">
+                        {sqlSetupText}
+                      </pre>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(sqlSetupText);
+                          alert('Supabase SQL Setup script copied to clipboard!');
+                        }}
+                        className="absolute right-2 top-2 bg-white/10 hover:bg-white/20 text-white font-mono text-[8px] font-bold uppercase px-2.5 py-1.5 rounded-lg transition-all cursor-pointer"
+                      >
+                        Copy SQL
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
             </div>
           )}
         </div>
@@ -1049,6 +1237,24 @@ export default function AdminDashboard({
         </div>
 
       </div>
+
+      {/* Floating Uploading Loader indicator */}
+      <AnimatePresence>
+        {isUploading && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-6 right-6 z-50 bg-black/95 text-white border border-white/10 backdrop-blur-md py-4 px-6 rounded-2xl shadow-2xl flex items-center gap-3"
+          >
+            <div className="w-4 h-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-emerald-400 font-bold">Cloud Delivery Network</span>
+              <span className="text-xs text-white/90 font-light mt-0.5">{uploadProgressMsg}</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

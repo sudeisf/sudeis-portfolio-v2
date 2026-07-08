@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ShieldAlert, KeyRound, Mail, ArrowRight, Eye, EyeOff, Sparkles, HelpCircle } from 'lucide-react';
+import { ShieldAlert, KeyRound, Mail, ArrowRight, Eye, EyeOff, Sparkles, HelpCircle, Sun, Moon, Monitor } from 'lucide-react';
 import { safeStorage } from '../utils/safeStorage';
 
 interface AdminLoginProps {
   onLoginSuccess: () => void;
   allowedEmail: string;
+  theme: 'light' | 'dark' | 'system';
+  onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
 }
 
-export default function AdminLogin({ onLoginSuccess, allowedEmail }: AdminLoginProps) {
+export default function AdminLogin({ onLoginSuccess, allowedEmail, theme, onThemeChange }: AdminLoginProps) {
   const [email, setEmail] = useState(allowedEmail);
   const [passcode, setPasscode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -50,28 +52,54 @@ export default function AdminLogin({ onLoginSuccess, allowedEmail }: AdminLoginP
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#0C0C0E] text-[#F3F4F6] flex flex-col justify-between p-6 relative overflow-hidden" id="admin-login-view">
+    <div className="min-h-screen w-full bg-[#F6F6F8] dark:bg-[#0B0B0C] text-[#1C1C1E] dark:text-[#F3F4F6] flex flex-col justify-between p-6 relative overflow-hidden transition-colors duration-300" id="admin-login-view">
       {/* Visual Ambient glow in the background */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#4F46E5]/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-indigo-500/5 dark:bg-[#4F46E5]/10 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-10 right-10 w-[300px] h-[300px] bg-emerald-500/5 rounded-full blur-[90px] pointer-events-none" />
 
       {/* Header */}
-      <div className="max-w-7xl mx-auto w-full flex justify-between items-center z-10">
+      <div className="max-w-7xl mx-auto w-full flex flex-col sm:flex-row gap-4 justify-between items-center z-10">
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          <span className="text-[10px] font-mono tracking-widest text-emerald-400 font-bold uppercase">
+          <span className="text-[10px] font-mono tracking-widest text-emerald-600 dark:text-emerald-400 font-bold uppercase">
             SECURE SYSTEM GATEWAY v2.8
           </span>
         </div>
-        <a 
-          href="#/" 
-          onClick={() => {
-            window.location.hash = '';
-          }}
-          className="text-[11px] font-display font-medium tracking-wider text-gray-400 hover:text-white transition-colors"
-        >
-          ← BACK TO LIVE PORTFOLIO
-        </a>
+        
+        <div className="flex items-center gap-4">
+          <a 
+            href="#/" 
+            onClick={() => {
+              window.location.hash = '';
+            }}
+            className="text-[11px] font-display font-medium tracking-wider text-gray-500 hover:text-black dark:text-gray-400 dark:hover:text-white transition-colors"
+          >
+            ← BACK TO LIVE PORTFOLIO
+          </a>
+
+          {/* Theme switcher segmented control */}
+          <div className="flex items-center gap-1 bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 p-0.5 rounded-xl">
+            {[
+              { key: 'light', icon: <Sun className="w-3.5 h-3.5" />, title: 'Light' },
+              { key: 'dark', icon: <Moon className="w-3.5 h-3.5" />, title: 'Dark' },
+              { key: 'system', icon: <Monitor className="w-3.5 h-3.5" />, title: 'System' }
+            ].map((item) => (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => onThemeChange(item.key as 'light' | 'dark' | 'system')}
+                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                  theme === item.key 
+                    ? 'bg-white dark:bg-zinc-800 text-black dark:text-white shadow-sm' 
+                    : 'text-gray-400 hover:text-black dark:hover:text-white'
+                }`}
+                title={item.title}
+              >
+                {item.icon}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Login Card Form */}
@@ -80,18 +108,18 @@ export default function AdminLogin({ onLoginSuccess, allowedEmail }: AdminLoginP
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="w-full max-w-md bg-[#16161A]/80 backdrop-blur-xl border border-white/5 rounded-3xl p-8 shadow-2xl relative"
+          className="w-full max-w-md bg-white dark:bg-[#16161A]/80 backdrop-blur-xl border border-black/5 dark:border-white/5 rounded-3xl p-8 shadow-2xl relative"
         >
           {/* Lock icon accent */}
-          <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-6">
-            <ShieldAlert className="w-5 h-5 text-emerald-400" />
+          <div className="w-12 h-12 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 flex items-center justify-center mb-6">
+            <ShieldAlert className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
           </div>
 
           <div className="space-y-1 mb-8">
-            <h2 className="font-display text-lg font-black tracking-wider text-white uppercase">
+            <h2 className="font-display text-lg font-black tracking-wider text-black dark:text-white uppercase">
               SUDEIS FEDL
             </h2>
-            <p className="text-xs text-gray-400 font-light">
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-light">
               Admin CMS Console Gate. Authenticate to modify portfolio works & site images.
             </p>
           </div>
@@ -100,7 +128,7 @@ export default function AdminLogin({ onLoginSuccess, allowedEmail }: AdminLoginP
             <motion.div 
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
-              className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-xl p-3 mb-6"
+              className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs rounded-xl p-3 mb-6"
             >
               {error}
             </motion.div>
@@ -109,18 +137,18 @@ export default function AdminLogin({ onLoginSuccess, allowedEmail }: AdminLoginP
           <form onSubmit={handleLoginSubmit} className="space-y-5">
             {/* Email Field */}
             <div className="space-y-1.5">
-              <label className="block text-[10px] font-mono text-gray-400 tracking-wider uppercase">
+              <label className="block text-[10px] font-mono text-gray-500 dark:text-gray-400 tracking-wider uppercase">
                 ADMIN EMAIL
               </label>
               <div className="relative">
-                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-400" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="sudeisfed@gmail.com"
                   required
-                  className="w-full pl-10 pr-4 py-3 bg-white/5 hover:bg-white/[0.07] focus:bg-white/[0.08] border border-white/10 focus:border-emerald-500/50 rounded-xl text-xs text-white focus:outline-none transition-all font-light"
+                  className="w-full pl-10 pr-4 py-3 bg-black/5 dark:bg-white/5 hover:bg-neutral-100 dark:hover:bg-white/[0.07] focus:bg-white/[0.08] border border-black/10 dark:border-white/10 focus:border-black/50 dark:focus:border-emerald-500/50 rounded-xl text-xs text-black dark:text-white focus:outline-none transition-all font-light"
                 />
               </div>
             </div>
@@ -128,32 +156,32 @@ export default function AdminLogin({ onLoginSuccess, allowedEmail }: AdminLoginP
             {/* Passcode Field */}
             <div className="space-y-1.5">
               <div className="flex justify-between items-center">
-                <label className="block text-[10px] font-mono text-gray-400 tracking-wider uppercase">
+                <label className="block text-[10px] font-mono text-gray-500 dark:text-gray-400 tracking-wider uppercase">
                   SECURITY PASSCODE
                 </label>
                 <button
                   type="button"
                   onClick={() => setShowHint(!showHint)}
-                  className="text-[10px] text-emerald-400 hover:text-emerald-300 font-mono tracking-wider uppercase flex items-center gap-1 cursor-pointer"
+                  className="text-[10px] text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300 font-mono tracking-wider uppercase flex items-center gap-1 cursor-pointer"
                 >
                   <HelpCircle className="w-3 h-3" />
                   {showHint ? 'Hide Hint' : 'Show Hint'}
                 </button>
               </div>
               <div className="relative">
-                <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 dark:text-gray-400" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={passcode}
                   onChange={(e) => setPasscode(e.target.value)}
                   placeholder="••••••••••••••"
                   required
-                  className="w-full pl-10 pr-10 py-3 bg-white/5 hover:bg-white/[0.07] focus:bg-white/[0.08] border border-white/10 focus:border-emerald-500/50 rounded-xl text-xs text-white focus:outline-none transition-all font-mono"
+                  className="w-full pl-10 pr-10 py-3 bg-black/5 dark:bg-white/5 hover:bg-neutral-100 dark:hover:bg-white/[0.07] focus:bg-white/[0.08] border border-black/10 dark:border-white/10 focus:border-black/50 dark:focus:border-emerald-500/50 rounded-xl text-xs text-black dark:text-white focus:outline-none transition-all font-mono"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 cursor-pointer"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-black dark:hover:text-gray-300 cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -167,16 +195,16 @@ export default function AdminLogin({ onLoginSuccess, allowedEmail }: AdminLoginP
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="bg-emerald-500/5 border border-emerald-500/10 text-emerald-400/90 text-[11px] rounded-xl p-3.5 space-y-1 font-light"
+                  className="bg-emerald-500/5 border border-emerald-500/10 text-emerald-700 dark:text-emerald-400/90 text-[11px] rounded-xl p-3.5 space-y-1 font-light"
                 >
                   <div className="flex items-center gap-1 font-bold">
                     <Sparkles className="w-3.5 h-3.5" />
                     ADMINISTRATOR REMINDER
                   </div>
                   <p>
-                    Hello Sudeis! The default cryptographic key is configured as: <code className="font-mono bg-emerald-500/10 px-1 py-0.5 rounded text-white font-bold text-xs">sudeis2026</code>.
+                    Hello Sudeis! The default cryptographic key is configured as: <code className="font-mono bg-emerald-500/10 dark:bg-emerald-500/20 px-1 py-0.5 rounded text-emerald-800 dark:text-white font-bold text-xs">sudeis2026</code>.
                   </p>
-                  <p className="text-[10px] text-gray-400 mt-1">
+                  <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
                     You can easily update this passcode to any custom secret inside the Security Settings tab of the control dashboard.
                   </p>
                 </motion.div>
@@ -186,7 +214,7 @@ export default function AdminLogin({ onLoginSuccess, allowedEmail }: AdminLoginP
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full bg-white hover:bg-gray-100 disabled:bg-gray-700 text-[#0C0C0E] font-display text-[10px] font-black tracking-widest uppercase py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-white/5 mt-2"
+              className="w-full bg-black dark:bg-white hover:bg-neutral-800 dark:hover:bg-gray-100 disabled:bg-gray-700 text-white dark:text-[#0C0C0E] font-display text-[10px] font-black tracking-widest uppercase py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg mt-2"
             >
               {isSubmitting ? 'VERIFYING CREDENTIALS...' : 'AUTHENTICATE SECURE SESSION'}
               {!isSubmitting && <ArrowRight className="w-4 h-4" />}
@@ -196,7 +224,7 @@ export default function AdminLogin({ onLoginSuccess, allowedEmail }: AdminLoginP
       </div>
 
       {/* Footer info */}
-      <div className="max-w-7xl mx-auto w-full text-center text-[10px] font-mono text-gray-600 z-10">
+      <div className="max-w-7xl mx-auto w-full text-center text-[10px] font-mono text-gray-500 dark:text-gray-600 z-10">
         ENCRYPTED SECURE CHANNEL • SUDEIS PORTFOLIO MANAGEMENT CONSOLE © 2026.
       </div>
     </div>

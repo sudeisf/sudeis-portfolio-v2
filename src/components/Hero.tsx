@@ -1,5 +1,6 @@
 import { motion } from 'motion/react';
-import { ArrowDown, Github, Linkedin, Send } from 'lucide-react';
+import { ArrowDown, Github, Linkedin, Send, FileDown } from 'lucide-react';
+import { defaultResumeData, printResume } from '../utils/resume';
 
 interface HeroProps {
   portraitPath: string;
@@ -17,6 +18,40 @@ export default function Hero({ portraitPath }: HeroProps) {
         behavior: 'smooth'
       });
     }
+  };
+
+  const handleDownloadCV = () => {
+    try {
+      const source = localStorage.getItem('sudeis_resume_source') || 'interactive';
+      if (source === 'custom') {
+        const customResumeFile = localStorage.getItem('sudeis_custom_resume_file');
+        const customResumeName = localStorage.getItem('sudeis_custom_resume_name') || 'Sudeis_Fedlu_Resume.pdf';
+        
+        if (customResumeFile) {
+          const link = document.createElement('a');
+          link.href = customResumeFile;
+          link.download = customResumeName;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("localStorage not accessible", e);
+    }
+
+    // Fallback or interactive mode
+    let resume = defaultResumeData;
+    try {
+      const saved = localStorage.getItem('sudeis_resume_data');
+      if (saved) {
+        resume = JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn("localStorage not accessible", e);
+    }
+    printResume(resume);
   };
 
   return (
@@ -53,7 +88,7 @@ export default function Hero({ portraitPath }: HeroProps) {
               </div>
 
               {/* Social Links sprint icons */}
-              <div className="flex items-center gap-3 pl-6 pt-3" id="hero-social-links">
+              <div className="flex flex-wrap items-center gap-3 pl-6 pt-3" id="hero-social-links">
                 <a
                   href="https://github.com/sudeisf"
                   target="_blank"
@@ -84,6 +119,17 @@ export default function Hero({ portraitPath }: HeroProps) {
                 >
                   <Send className="w-5 h-5 -rotate-45" />
                 </a>
+
+                {/* ATS Resume Download Action */}
+                <button
+                  onClick={handleDownloadCV}
+                  className="flex items-center gap-2 bg-black hover:bg-neutral-800 text-white px-5 py-2 rounded-full text-xs font-bold uppercase tracking-wider cursor-pointer font-sans transition-all duration-300 hover:scale-105 active:scale-95 shadow-sm"
+                  title="Download / Print ATS Optimized Resume"
+                  id="hero-cv-download-btn"
+                >
+                  <FileDown className="w-3.5 h-3.5 text-emerald-400" />
+                  Download Resume
+                </button>
               </div>
             </motion.div>
 
