@@ -73,6 +73,27 @@ export default function App() {
     return 'public';
   });
 
+  // Listen for hash and history changes to support client-side SPA navigation
+  useEffect(() => {
+    const handleNavigation = () => {
+      const path = window.location.pathname;
+      const hash = window.location.hash;
+      if (path === '/admin' || hash === '#admin') {
+        setCurrentRoute('admin');
+      } else {
+        setCurrentRoute('public');
+      }
+    };
+
+    window.addEventListener('hashchange', handleNavigation);
+    window.addEventListener('popstate', handleNavigation);
+    
+    return () => {
+      window.removeEventListener('hashchange', handleNavigation);
+      window.removeEventListener('popstate', handleNavigation);
+    };
+  }, []);
+
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
     return safeStorage.getItem('sudeis_admin_auth') === 'true';
   });
