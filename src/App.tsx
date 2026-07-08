@@ -21,7 +21,7 @@ import {
   DEFAULT_OG_IMAGE,
 } from './utils/defaults';
 
-const SITE_URL = import.meta.env.VITE_APP_URL || 'https://sudeis-portfolio-v2.vercel.app';
+const SITE_URL = import.meta.env.VITE_APP_URL || 'https://sudeisfedlu.et';
 
 function resolveImageUrl(value: string | null | undefined, fallback: string): string {
   if (value && typeof value === 'string' && value.trim()) return value;

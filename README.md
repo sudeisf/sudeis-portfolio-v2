@@ -69,9 +69,9 @@ Ensure `.env` is present or configure environment variables in `docker-compose.y
 2. Set environment variables in the Vercel project dashboard (see `.env.example`):
    - **Required:** `ADMIN_EMAIL`, `ADMIN_PASSCODE`, `ADMIN_SESSION_SECRET`
    - **Optional:** `GEMINI_API_KEY`, `SUPABASE_*`, `CLOUDINARY_*`
-   - `VITE_APP_URL` is optional — it is auto-derived from `VERCEL_URL` during build
+   - `VITE_APP_URL` — set to `https://sudeisfedlu.et` on Vercel (overrides `VERCEL_URL` for OG/social previews)
 3. Build command: `npm run build` (configured in `vercel.json`)
-4. The build generates `api/index.cjs` from `server.ts` for serverless API routes
+4. `api/index.ts` re-exports the Express app; `vercel.json` routes `/api/*` to it
 
 ### VPS / Docker
 

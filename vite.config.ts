@@ -5,7 +5,7 @@ import { defineConfig } from 'vite';
 
 const appUrl =
   process.env.VITE_APP_URL ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'https://sudeisfedlu.et');
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],

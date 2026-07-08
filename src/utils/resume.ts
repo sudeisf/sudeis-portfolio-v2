@@ -6,7 +6,7 @@ export const defaultResumeData: ResumeData = {
   email: "sudeisfed@gmail.com",
   phone: "+251 974 126 234",
   location: "Addis Ababa, Ethiopia",
-  website: "https://sudeis-portfolio-v2.vercel.app/",
+  website: "https://sudeisfedlu.et/",
   linkedin: "https://linkedin.com/in/sudeis-fedlu-554147341",
   github: "https://github.com/sudeisf",
   summary: "Innovative Full-Stack Developer with 3+ years of experience building high-performance, containerized web applications. Proven track record of architecting scalable Python & PHP backends, cloud-integrated maps ecosystems, and interactive frontends. Strong advocate for clean architecture, low latency, and robust structural designs.",
