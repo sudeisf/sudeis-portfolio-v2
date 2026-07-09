@@ -79,6 +79,7 @@ export default function AdminDashboard({
   const [projFullDesc, setProjFullDesc] = useState('');
   const [projTech, setProjTech] = useState('');
   const [projLink, setProjLink] = useState('');
+  const [projGallery, setProjGallery] = useState<string[]>([]);
   
   const [isAddingProject, setIsAddingProject] = useState(false);
   const [dragActiveHero, setDragActiveHero] = useState(false);
@@ -108,6 +109,7 @@ export default function AdminDashboard({
   const heroInputRef = useRef<HTMLInputElement>(null);
   const aboutInputRef = useRef<HTMLInputElement>(null);
   const projInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const certInputRef = useRef<HTMLInputElement>(null);
 
   // Load inquiries from Supabase with fallback
@@ -234,6 +236,29 @@ export default function AdminDashboard({
     }
   };
 
+  const handleGalleryFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      // allow multiple
+      Array.from(e.target.files).forEach((file: File) => {
+        uploadMediaToCloudinary(file)
+          .then((url) => setProjGallery(prev => [...prev, url]))
+          .catch(() => {});
+      });
+    }
+  };
+
+  const handleDropGallery = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      Array.from(e.dataTransfer.files).forEach((file: File) => {
+        uploadMediaToCloudinary(file)
+          .then((url) => setProjGallery(prev => [...prev, url]))
+          .catch(() => {});
+      });
+    }
+  };
+
   // Add project handler
   const handleAddProject = () => {
     if (!projTitle || !projCategory) {
@@ -253,7 +278,8 @@ export default function AdminDashboard({
       description: projDesc || 'No summary description provided.',
       fullDescription: projFullDesc || 'No details provided.',
       technologies: techArray,
-      link: projLink || undefined
+      link: projLink || undefined,
+      gallery: projGallery.length > 0 ? projGallery : undefined
     };
 
     setProjects([...projects, newProj]);
@@ -271,6 +297,7 @@ export default function AdminDashboard({
     setProjFullDesc(proj.fullDescription);
     setProjTech(proj.technologies.join(', '));
     setProjLink(proj.link || '');
+    setProjGallery(proj.gallery || []);
   };
 
   // Save project edit
@@ -294,7 +321,8 @@ export default function AdminDashboard({
           description: projDesc,
           fullDescription: projFullDesc,
           technologies: techArray,
-          link: projLink || undefined
+          link: projLink || undefined,
+          gallery: projGallery.length > 0 ? projGallery : undefined
         };
       }
       return p;
@@ -411,6 +439,7 @@ export default function AdminDashboard({
     setProjFullDesc('');
     setProjTech('');
     setProjLink('');
+    setProjGallery([]);
   };
 
   return (
@@ -812,6 +841,44 @@ export default function AdminDashboard({
                             />
                             <p className="font-display font-bold text-black uppercase tracking-wider text-[9px]">
                               Drag & Drop Local Image file
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[9px] font-mono text-gray-400 uppercase mb-1">PROJECT GALLERY IMAGES (MULTIPLE)</label>
+                        <div className="space-y-2">
+                          <div className="flex flex-col gap-2">
+                            {projGallery.map((img, i) => (
+                              <div key={i} className="flex items-center gap-2 bg-[#F6F6F8] border border-black/5 rounded-xl px-3 py-2 text-xs">
+                                <span className="truncate flex-1 font-mono text-[9px] text-gray-500">{img}</span>
+                                <button 
+                                  type="button" 
+                                  onClick={() => setProjGallery(prev => prev.filter((_, idx) => idx !== i))}
+                                  className="text-gray-400 hover:text-red-500 cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                          <div 
+                            onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                            onDrop={handleDropGallery}
+                            onClick={() => galleryInputRef.current?.click()}
+                            className="border border-dashed rounded-xl p-3 text-center cursor-pointer text-[10px] transition-all border-black/10 hover:border-black/25 bg-[#F6F6F8]"
+                          >
+                            <input 
+                              ref={galleryInputRef}
+                              type="file" 
+                              accept="image/*"
+                              multiple
+                              className="hidden" 
+                              onChange={handleGalleryFileChange}
+                            />
+                            <p className="font-display font-bold text-black uppercase tracking-wider text-[9px]">
+                              Drag & Drop Additional Images
                             </p>
                           </div>
                         </div>

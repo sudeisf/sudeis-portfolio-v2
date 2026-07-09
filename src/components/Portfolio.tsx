@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ArrowUpRight, Code, Heart, Search, Eye } from 'lucide-react';
+import { X, ArrowUpRight, Code, Heart, Search, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Project } from '../types';
 
 interface PortfolioProps {
@@ -18,6 +18,7 @@ const isVideoUrl = (url?: string) => {
 
 export default function Portfolio({ projects }: PortfolioProps) {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   return (
@@ -46,7 +47,10 @@ export default function Portfolio({ projects }: PortfolioProps) {
               viewport={{ once: true }}
               transition={{ delay: idx * 0.15, duration: 0.7 }}
               className="flex flex-col cursor-pointer group"
-              onClick={() => setSelectedProject(proj)}
+              onClick={() => {
+                setSelectedProject(proj);
+                setCurrentImageIndex(0);
+              }}
               onMouseEnter={() => setHoveredIndex(idx)}
               onMouseLeave={() => setHoveredIndex(null)}
               id={`portfolio-item-${proj.id}`}
@@ -131,37 +135,88 @@ export default function Portfolio({ projects }: PortfolioProps) {
               id="portfolio-detail-modal"
             >
               {/* Header Banner */}
-              <div className="relative w-full bg-neutral-100 flex-shrink-0 border-b border-black/5">
-                {isVideoUrl(selectedProject.image) ? (
-                  <video
-                    src={selectedProject.image}
-                    className="w-full h-auto max-h-[70vh] object-contain transition-all duration-300"
-                    controls
-                    autoPlay
-                    muted
-                    playsInline
-                    id="modal-banner-video"
-                  />
-                ) : (
-                  <img
-                    src={selectedProject.image}
-                    alt={selectedProject.title}
-                    className="w-full h-auto max-h-[70vh] object-contain transition-all duration-300"
-                    referrerPolicy="no-referrer"
-                    id="modal-banner-img"
-                  />
-                )}
+              <div className="relative w-full bg-neutral-100 flex-shrink-0 border-b border-black/5 group/slider">
+                {(() => {
+                  const images = [selectedProject.image, ...(selectedProject.gallery || [])];
+                  const currentMedia = images[currentImageIndex];
+                  
+                  return (
+                    <>
+                      {isVideoUrl(currentMedia) ? (
+                        <video
+                          key={currentMedia}
+                          src={currentMedia}
+                          className="w-full h-auto max-h-[70vh] object-contain transition-all duration-300"
+                          controls
+                          autoPlay
+                          muted
+                          playsInline
+                          id="modal-banner-video"
+                        />
+                      ) : (
+                        <img
+                          key={currentMedia}
+                          src={currentMedia}
+                          alt={selectedProject.title}
+                          className="w-full h-auto max-h-[70vh] object-contain transition-all duration-300"
+                          referrerPolicy="no-referrer"
+                          id="modal-banner-img"
+                        />
+                      )}
+
+                      {images.length > 1 && (
+                        <>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+                            }}
+                            className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-black p-2 rounded-full shadow-md backdrop-blur-sm opacity-0 group-hover/slider:opacity-100 transition-opacity cursor-pointer"
+                          >
+                            <ChevronLeft className="w-5 h-5" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+                            }}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-black p-2 rounded-full shadow-md backdrop-blur-sm opacity-0 group-hover/slider:opacity-100 transition-opacity cursor-pointer"
+                          >
+                            <ChevronRight className="w-5 h-5" />
+                          </button>
+                          
+                          <div className="absolute bottom-4 right-4 flex gap-1.5 z-10">
+                            {images.map((_, idx) => (
+                              <button
+                                key={idx}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCurrentImageIndex(idx);
+                                }}
+                                className={`w-2 h-2 rounded-full transition-all cursor-pointer ${
+                                  currentImageIndex === idx 
+                                    ? 'bg-black w-4' 
+                                    : 'bg-black/30 hover:bg-black/50'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </>
+                  );
+                })()}
                 
                 {/* Close Trigger Button */}
                 <button
                   onClick={() => setSelectedProject(null)}
-                  className="absolute top-4 right-4 bg-black hover:bg-[#1C1C1E] text-white p-2.5 rounded-full transition-all cursor-pointer shadow-md"
+                  className="absolute top-4 right-4 bg-black hover:bg-[#1C1C1E] text-white p-2.5 rounded-full transition-all cursor-pointer shadow-md z-20"
                   id="modal-close-btn"
                 >
                   <X className="w-5 h-5" />
                 </button>
 
-                <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-full shadow border border-white/25">
+                <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-full shadow border border-white/25 z-10">
                   <span className="font-display text-[9px] text-[#1C1C1E] font-bold uppercase tracking-wider">
                     {selectedProject.category}
                   </span>

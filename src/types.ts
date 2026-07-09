@@ -7,6 +7,7 @@ export interface Project {
   fullDescription: string;
   technologies: string[];
   link?: string;
+  gallery?: string[];
 }
 
 export interface Service {
