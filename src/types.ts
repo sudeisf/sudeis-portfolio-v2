@@ -24,6 +24,7 @@ export interface ExperienceItem {
   period: string;
   bullets: string[];
   technologies: string[];
+  certificateImage?: string;
 }
 
 export interface ContactMessage {

@@ -307,6 +307,7 @@ app.get('/api/portfolio', async (_req, res) => {
     const heroImage = await getPortfolioData('heroImage', null);
     const aboutImage = await getPortfolioData('aboutImage', null);
     const projects = await getPortfolioData('projects', null);
+    const experiences = await getPortfolioData('experiences', null);
     const resumeSourceSettings = await getPortfolioData('resumeSourceSettings', null);
     const resumeData = await getPortfolioData('resumeData', null);
 
@@ -314,6 +315,7 @@ app.get('/api/portfolio', async (_req, res) => {
       heroImage,
       aboutImage,
       projects,
+      experiences,
       resumeSourceSettings,
       resumeData,
       supabaseConfigured: isSupabaseConfigured(),

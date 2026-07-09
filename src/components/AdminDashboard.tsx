@@ -29,17 +29,21 @@ import {
   Sun,
   Moon,
   Monitor,
-  Database
+  Database,
+  Award
 } from 'lucide-react';
-import { Project, ContactMessage } from '../types';
+import { Project, ContactMessage, ExperienceItem } from '../types';
 import { safeStorage } from '../utils/safeStorage';
 import { apiFetch } from '../utils/api';
 import { uploadMedia } from '../utils/upload';
 import ResumeBuilder from './ResumeBuilder';
+import ExperienceManager from './ExperienceManager';
 
 interface AdminDashboardProps {
   projects: Project[];
   setProjects: (projects: Project[]) => void;
+  experiences: ExperienceItem[];
+  setExperiences: (experiences: ExperienceItem[]) => void;
   heroImage: string;
   setHeroImage: (url: string) => void;
   aboutImage: string;
@@ -53,6 +57,8 @@ interface AdminDashboardProps {
 export default function AdminDashboard({
   projects,
   setProjects,
+  experiences,
+  setExperiences,
   heroImage,
   setHeroImage,
   aboutImage,
@@ -62,7 +68,7 @@ export default function AdminDashboard({
   onThemeChange,
   onLogout
 }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'images' | 'projects' | 'inquiries' | 'resume' | 'security'>('images');
+  const [activeTab, setActiveTab] = useState<'images' | 'projects' | 'experiences' | 'inquiries' | 'resume' | 'security'>('images');
   
   // Project editing states
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
@@ -102,6 +108,7 @@ export default function AdminDashboard({
   const heroInputRef = useRef<HTMLInputElement>(null);
   const aboutInputRef = useRef<HTMLInputElement>(null);
   const projInputRef = useRef<HTMLInputElement>(null);
+  const certInputRef = useRef<HTMLInputElement>(null);
 
   // Load inquiries from Supabase with fallback
   const loadInquiries = async () => {
@@ -454,6 +461,18 @@ export default function AdminDashboard({
             </button>
 
             <button
+              onClick={() => setActiveTab('experiences')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-display text-[11px] font-bold tracking-wider uppercase transition-all text-left cursor-pointer ${
+                activeTab === 'experiences'
+                  ? 'bg-black text-white dark:bg-white dark:text-black font-black'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'
+              }`}
+            >
+              <Briefcase className="w-4 h-4" />
+              Experience ({experiences.length})
+            </button>
+
+            <button
               onClick={() => {
                 setActiveTab('inquiries');
                 loadInquiries();
@@ -536,6 +555,7 @@ export default function AdminDashboard({
             <h1 className="font-display text-xl font-black tracking-tight text-black dark:text-white uppercase mt-0.5">
               {activeTab === 'images' && 'Site Visual Identity'}
               {activeTab === 'projects' && 'Portfolio Publications'}
+              {activeTab === 'experiences' && 'Experience Timeline'}
               {activeTab === 'inquiries' && 'Prospective Clients Inbox'}
               {activeTab === 'resume' && 'AI Resume Builder'}
               {activeTab === 'security' && 'Admin security configurations'}
@@ -938,6 +958,15 @@ export default function AdminDashboard({
               </div>
 
             </div>
+          )}
+
+          {activeTab === 'experiences' && (
+            <ExperienceManager
+              experiences={experiences}
+              setExperiences={setExperiences}
+              uploadMediaToCloudinary={uploadMediaToCloudinary}
+              certInputRef={certInputRef}
+            />
           )}
 
           {activeTab === 'inquiries' && (

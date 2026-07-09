@@ -11,13 +11,14 @@ import ContactForm from './components/ContactForm';
 import Footer from './components/Footer';
 import AdminDashboard from './components/AdminDashboard';
 import AdminLogin from './components/AdminLogin';
-import { Project } from './types';
+import { Project, ExperienceItem } from './types';
 import { safeStorage } from './utils/safeStorage';
 import { apiFetch, verifyAdminSession } from './utils/api';
 import {
   DEFAULT_HERO_IMAGE,
   DEFAULT_ABOUT_IMAGE,
   DEFAULT_PROJECTS,
+  DEFAULT_EXPERIENCES,
   DEFAULT_OG_IMAGE,
 } from './utils/defaults';
 
@@ -31,6 +32,11 @@ function resolveImageUrl(value: string | null | undefined, fallback: string): st
 function resolveProjects(value: Project[] | null | undefined): Project[] {
   if (Array.isArray(value) && value.length > 0) return value;
   return DEFAULT_PROJECTS;
+}
+
+function resolveExperiences(value: ExperienceItem[] | null | undefined): ExperienceItem[] {
+  if (Array.isArray(value) && value.length > 0) return value;
+  return DEFAULT_EXPERIENCES;
 }
 
 export default function App() {
@@ -133,6 +139,21 @@ export default function App() {
     return DEFAULT_PROJECTS;
   });
 
+  const [experiences, setExperiences] = useState<ExperienceItem[]>(() => {
+    const saved = safeStorage.getItem('sudeis_experiences');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch {
+        // Fallback to defaults
+      }
+    }
+    return DEFAULT_EXPERIENCES;
+  });
+
   useEffect(() => {
     const checkAuth = async () => {
       const authenticated = await verifyAdminSession();
@@ -151,13 +172,16 @@ export default function App() {
           const nextHero = resolveImageUrl(data.heroImage, DEFAULT_HERO_IMAGE);
           const nextAbout = resolveImageUrl(data.aboutImage, DEFAULT_ABOUT_IMAGE);
           const nextProjects = resolveProjects(data.projects);
+          const nextExperiences = resolveExperiences(data.experiences);
 
           setHeroImage(nextHero);
           setAboutImage(nextAbout);
           setProjects(nextProjects);
+          setExperiences(nextExperiences);
           safeStorage.setItem('sudeis_hero_image', nextHero);
           safeStorage.setItem('sudeis_about_image', nextAbout);
           safeStorage.setItem('sudeis_projects', JSON.stringify(nextProjects));
+          safeStorage.setItem('sudeis_experiences', JSON.stringify(nextExperiences));
         }
       } catch (err) {
         console.error('Failed to fetch portfolio data', err);
@@ -202,6 +226,19 @@ export default function App() {
       });
     } catch (e) {
       console.error('Failed to save projects:', e);
+    }
+  };
+
+  const handleSetExperiences = async (updatedExperiences: ExperienceItem[]) => {
+    setExperiences(updatedExperiences);
+    safeStorage.setItem('sudeis_experiences', JSON.stringify(updatedExperiences));
+    try {
+      await apiFetch('/api/portfolio', {
+        method: 'POST',
+        body: JSON.stringify({ key: 'experiences', value: updatedExperiences }),
+      });
+    } catch (e) {
+      console.error('Failed to save experiences:', e);
     }
   };
 
@@ -291,6 +328,7 @@ export default function App() {
     await handleSetHeroImage(DEFAULT_HERO_IMAGE);
     await handleSetAboutImage(DEFAULT_ABOUT_IMAGE);
     await handleSetProjects(DEFAULT_PROJECTS);
+    await handleSetExperiences(DEFAULT_EXPERIENCES);
   };
 
   const handleOpenCMS = () => {
@@ -347,6 +385,8 @@ export default function App() {
         <AdminDashboard
           projects={projects}
           setProjects={handleSetProjects}
+          experiences={experiences}
+          setExperiences={handleSetExperiences}
           heroImage={heroImage}
           setHeroImage={handleSetHeroImage}
           aboutImage={aboutImage}
@@ -393,7 +433,7 @@ export default function App() {
         <SkillsTicker />
         <AboutMe portraitPath={aboutImage} />
         <Services onStartProject={handleStartProject} />
-        <Experience />
+        <Experience experiences={experiences} />
         <Portfolio projects={projects} />
         <ContactForm onSuccess={handleSuccessfulDispatch} preSelectedService={preSelectedService} />
       </main>

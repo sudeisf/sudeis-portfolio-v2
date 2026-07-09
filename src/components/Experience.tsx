@@ -1,38 +1,27 @@
-import { motion } from 'motion/react';
-import { Calendar, Building, BookOpen } from 'lucide-react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Calendar, Building, Award, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { ExperienceItem } from '../types';
 
-export default function Experience() {
-  const experiences: ExperienceItem[] = [
-    {
-      id: 'kuraztech',
-      role: 'Back End Developer Intern',
-      company: 'Kuraztech',
-      period: 'Jul 2025 - Oct 2025',
-      bullets: [
-        'Led the backend team and collaborated closely with frontend developers.',
-        'Designed and implemented RESTful APIs with comprehensive API documentation.',
-        'Improved system performance by ~35% using background queues and scheduled tasks.',
-        'Developed secure callback webhooks for Chapa payment integration.',
-        'Integrated Cloudinary for media/file uploads and implemented automated email services.'
-      ],
-      technologies: ['Laravel', 'PHP', 'MySQL', 'Redis', 'Cloudinary', 'Chapa API', 'RESTful APIs', 'Queues & Scheduling']
-    },
-    {
-      id: 'essti',
-      role: 'Full-stack Developer Intern (ETHIOPIAN SPACE SCIENCE AND TECHNOLOGY INSTITUTE)',
-      company: 'ESSTI',
-      period: 'Mar 2025 - Jun 2025',
-      bullets: [
-        'Developed and designed scalable RESTful APIs using Django and DRF for a vehicle fleet management system.',
-        'Built core backend logic for tracking, updating, and managing vehicles, drivers, and trip assignments.',
-        'Integrated OpenStreetMap into the admin dashboard for real-time vehicle location visualization.',
-        'Collaborated with frontend team for smooth API consumption and handled backend optimization.',
-        'Gained hands-on experience with database modeling, user authentication, and role-based permissions.'
-      ],
-      technologies: ['Django', 'Django REST Framework']
+interface ExperienceProps {
+  experiences: ExperienceItem[];
+}
+
+export default function Experience({ experiences }: ExperienceProps) {
+  const [certificateModal, setCertificateModal] = useState<{ image: string; company: string; role: string } | null>(null);
+  const [isZoomed, setIsZoomed] = useState(false);
+
+  const openCertificate = (exp: ExperienceItem) => {
+    if (exp.certificateImage) {
+      setCertificateModal({ image: exp.certificateImage, company: exp.company, role: exp.role });
+      setIsZoomed(false);
     }
-  ];
+  };
+
+  const closeCertificate = () => {
+    setCertificateModal(null);
+    setIsZoomed(false);
+  };
 
   return (
     <section id="experience" className="py-24 bg-transparent border-b border-black/5">
@@ -105,6 +94,22 @@ export default function Experience() {
                       </li>
                     ))}
                   </ul>
+
+                  {/* Certificate Button */}
+                  {exp.certificateImage && (
+                    <motion.button
+                      initial={{ opacity: 0, y: 8 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: 0.3, duration: 0.4 }}
+                      onClick={() => openCertificate(exp)}
+                      className="inline-flex items-center gap-2 mt-2 px-4 py-2.5 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/60 rounded-full text-xs font-display font-bold uppercase tracking-wider text-amber-800 hover:from-amber-100 hover:to-orange-100 hover:border-amber-300 hover:shadow-md hover:shadow-amber-100/50 transition-all duration-300 cursor-pointer group/cert"
+                      id={`certificate-btn-${exp.id}`}
+                    >
+                      <Award className="w-4 h-4 text-amber-600 group-hover/cert:rotate-12 transition-transform duration-300" />
+                      View Certificate
+                    </motion.button>
+                  )}
                 </div>
 
                 {/* Right side: Tech tags list (spanning 4 columns) */}
@@ -145,6 +150,91 @@ export default function Experience() {
         </div>
 
       </div>
+
+      {/* Certificate Image Modal */}
+      <AnimatePresence>
+        {certificateModal && (
+          <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={closeCertificate}
+              className="fixed inset-0 bg-black/80 backdrop-blur-sm"
+              id="certificate-modal-backdrop"
+            />
+
+            {/* Modal Body */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 28, stiffness: 350 }}
+              className="bg-white rounded-[24px] w-full max-w-4xl overflow-hidden shadow-2xl relative z-10 border border-black/5 max-h-[92vh] flex flex-col"
+              id="certificate-modal"
+            >
+              {/* Modal Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-black/5 bg-gradient-to-r from-amber-50/80 to-orange-50/50 flex-shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-sm">
+                    <Award className="w-4.5 h-4.5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-display text-sm font-bold text-[#1C1C1E] uppercase tracking-wide">
+                      Internship Certificate
+                    </h3>
+                    <p className="font-sans text-[11px] text-gray-500 mt-0.5">
+                      {certificateModal.role} — {certificateModal.company}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* Zoom Toggle */}
+                  <button
+                    onClick={() => setIsZoomed(!isZoomed)}
+                    className="p-2 rounded-full hover:bg-black/5 transition-colors text-gray-400 hover:text-gray-700 cursor-pointer"
+                    title={isZoomed ? 'Zoom out' : 'Zoom in'}
+                    id="certificate-zoom-btn"
+                  >
+                    {isZoomed ? <ZoomOut className="w-4.5 h-4.5" /> : <ZoomIn className="w-4.5 h-4.5" />}
+                  </button>
+                  {/* Close */}
+                  <button
+                    onClick={closeCertificate}
+                    className="p-2 rounded-full bg-black hover:bg-neutral-800 text-white transition-all cursor-pointer shadow-sm"
+                    id="certificate-close-btn"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Certificate Image */}
+              <div
+                className={`flex-1 overflow-auto bg-neutral-100 flex items-center justify-center p-4 md:p-6 transition-all duration-300 ${isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'}`}
+                onClick={() => setIsZoomed(!isZoomed)}
+                id="certificate-image-container"
+              >
+                <motion.img
+                  src={certificateModal.image}
+                  alt={`Internship Certificate - ${certificateModal.company}`}
+                  className={`rounded-lg shadow-lg border border-black/5 transition-all duration-500 ease-out ${
+                    isZoomed
+                      ? 'max-w-none w-[150%] md:w-[130%]'
+                      : 'max-w-full max-h-[70vh] w-auto h-auto object-contain'
+                  }`}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.1, duration: 0.4 }}
+                  referrerPolicy="no-referrer"
+                  id="certificate-image"
+                />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </section>
   );
 }
