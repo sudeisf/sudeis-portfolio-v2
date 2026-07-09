@@ -131,11 +131,20 @@ export default function Portfolio({ projects }: PortfolioProps) {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
               transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-              className="bg-[#F6F6F8] rounded-[28px] w-full max-w-5xl overflow-hidden shadow-2xl relative z-10 border border-black/5 max-h-[90vh] flex flex-col animate-in fade-in zoom-in-95 duration-250"
+              className="bg-[#F6F6F8] rounded-[28px] w-full max-w-6xl overflow-hidden shadow-2xl relative z-10 border border-black/5 h-[90vh] flex flex-col md:flex-row animate-in fade-in zoom-in-95 duration-250"
               id="portfolio-detail-modal"
             >
-              {/* Header Banner */}
-              <div className="relative w-full bg-neutral-100 flex-shrink-0 border-b border-black/5 group/slider">
+              {/* Close Trigger Button (Global to modal) */}
+              <button
+                onClick={() => setSelectedProject(null)}
+                className="absolute top-4 right-4 md:top-6 md:right-6 bg-white/80 hover:bg-white md:bg-black md:hover:bg-[#1C1C1E] text-black md:text-white p-2.5 rounded-full transition-all cursor-pointer shadow-md z-50 backdrop-blur-sm"
+                id="modal-close-btn"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Media Banner - Left side on desktop */}
+              <div className="relative w-full md:w-3/5 bg-[#E5E5E5] flex-shrink-0 border-b md:border-b-0 md:border-r border-black/5 group/slider h-[40vh] md:h-full flex items-center justify-center">
                 {(() => {
                   const images = [selectedProject.image, ...(selectedProject.gallery || [])];
                   const currentMedia = images[currentImageIndex];
@@ -146,7 +155,7 @@ export default function Portfolio({ projects }: PortfolioProps) {
                         <video
                           key={currentMedia}
                           src={currentMedia}
-                          className="w-full h-auto max-h-[70vh] object-contain transition-all duration-300"
+                          className="w-full h-full object-contain transition-all duration-300 absolute inset-0"
                           controls
                           autoPlay
                           muted
@@ -158,7 +167,7 @@ export default function Portfolio({ projects }: PortfolioProps) {
                           key={currentMedia}
                           src={currentMedia}
                           alt={selectedProject.title}
-                          className="w-full h-auto max-h-[70vh] object-contain transition-all duration-300"
+                          className="w-full h-full object-contain transition-all duration-300 absolute inset-0 p-2 md:p-6"
                           referrerPolicy="no-referrer"
                           id="modal-banner-img"
                         />
@@ -171,7 +180,7 @@ export default function Portfolio({ projects }: PortfolioProps) {
                               e.stopPropagation();
                               setCurrentImageIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
                             }}
-                            className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-black p-2 rounded-full shadow-md backdrop-blur-sm opacity-0 group-hover/slider:opacity-100 transition-opacity cursor-pointer"
+                            className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-black p-2 rounded-full shadow-md backdrop-blur-sm opacity-0 group-hover/slider:opacity-100 transition-opacity cursor-pointer z-10"
                           >
                             <ChevronLeft className="w-5 h-5" />
                           </button>
@@ -180,7 +189,7 @@ export default function Portfolio({ projects }: PortfolioProps) {
                               e.stopPropagation();
                               setCurrentImageIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
                             }}
-                            className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-black p-2 rounded-full shadow-md backdrop-blur-sm opacity-0 group-hover/slider:opacity-100 transition-opacity cursor-pointer"
+                            className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-black p-2 rounded-full shadow-md backdrop-blur-sm opacity-0 group-hover/slider:opacity-100 transition-opacity cursor-pointer z-10"
                           >
                             <ChevronRight className="w-5 h-5" />
                           </button>
@@ -207,15 +216,6 @@ export default function Portfolio({ projects }: PortfolioProps) {
                   );
                 })()}
                 
-                {/* Close Trigger Button */}
-                <button
-                  onClick={() => setSelectedProject(null)}
-                  className="absolute top-4 right-4 bg-black hover:bg-[#1C1C1E] text-white p-2.5 rounded-full transition-all cursor-pointer shadow-md z-20"
-                  id="modal-close-btn"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-
                 <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-md px-3.5 py-1.5 rounded-full shadow border border-white/25 z-10">
                   <span className="font-display text-[9px] text-[#1C1C1E] font-bold uppercase tracking-wider">
                     {selectedProject.category}
@@ -223,8 +223,8 @@ export default function Portfolio({ projects }: PortfolioProps) {
                 </div>
               </div>
 
-              {/* Scrollable Modal Content */}
-              <div className="p-6 md:p-10 overflow-y-auto space-y-6 flex-1 bg-[#F6F6F8]">
+              {/* Scrollable Modal Content - Right side on desktop */}
+              <div className="p-6 md:p-10 md:pt-16 overflow-y-auto space-y-6 flex-1 md:w-2/5 bg-[#F6F6F8]">
                 <div id="modal-title-row">
                   <h3 className="font-display text-xl md:text-2xl font-bold tracking-tight text-black uppercase">
                     {selectedProject.title}
