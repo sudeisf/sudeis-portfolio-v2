@@ -73,8 +73,6 @@ export default function AdminDashboard({
   const [projGallery, setProjGallery] = useState<string[]>([]);
   
   const [isAddingProject, setIsAddingProject] = useState(false);
-  const [dragActiveHero, setDragActiveHero] = useState(false);
-  const [dragActiveAbout, setDragActiveAbout] = useState(false);
   const [dragActiveProj, setDragActiveProj] = useState(false);
 
   // Inquiries and Security state
@@ -97,8 +95,6 @@ export default function AdminDashboard({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgressMsg, setUploadProgressMsg] = useState('');
   
-  const heroInputRef = useRef<HTMLInputElement>(null);
-  const aboutInputRef = useRef<HTMLInputElement>(null);
   const projInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const certInputRef = useRef<HTMLInputElement>(null);
@@ -187,40 +183,32 @@ export default function AdminDashboard({
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, target: 'hero' | 'about' | 'project') => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, target: 'project') => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       uploadMediaToCloudinary(file)
         .then((url) => {
-          if (target === 'hero') setHeroImage(url);
-          if (target === 'about') setAboutImage(url);
           if (target === 'project') setProjImage(url);
         })
         .catch(() => {});
     }
   };
 
-  const handleDrag = (e: React.DragEvent, target: 'hero' | 'about' | 'project', active: boolean) => {
+  const handleDrag = (e: React.DragEvent, target: 'project', active: boolean) => {
     e.preventDefault();
     e.stopPropagation();
-    if (target === 'hero') setDragActiveHero(active);
-    if (target === 'about') setDragActiveAbout(active);
     if (target === 'project') setDragActiveProj(active);
   };
 
-  const handleDrop = (e: React.DragEvent, target: 'hero' | 'about' | 'project') => {
+  const handleDrop = (e: React.DragEvent, target: 'project') => {
     e.preventDefault();
     e.stopPropagation();
-    if (target === 'hero') setDragActiveHero(false);
-    if (target === 'about') setDragActiveAbout(false);
     if (target === 'project') setDragActiveProj(false);
 
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const file = e.dataTransfer.files[0];
       uploadMediaToCloudinary(file)
         .then((url) => {
-          if (target === 'hero') setHeroImage(url);
-          if (target === 'about') setAboutImage(url);
           if (target === 'project') setProjImage(url);
         })
         .catch(() => {});
