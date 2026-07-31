@@ -1,11 +1,7 @@
 import { motion } from 'motion/react';
 import { Check } from 'lucide-react';
 
-interface AboutMeProps {
-  portraitPath: string;
-}
-
-export default function AboutMe({ portraitPath }: AboutMeProps) {
+export default function AboutMe() {
   const experiences = [
     {
       title: '1+ YEAR EXPERIENCE IN WEB DEVELOPMENT',
@@ -28,30 +24,10 @@ export default function AboutMe({ portraitPath }: AboutMeProps) {
   return (
     <section id="about" className="py-24 bg-transparent border-b border-black/5">
       <div className="max-w-7xl mx-auto px-6 md:px-12">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+        <div className="flex flex-col items-center">
           
-          {/* Image Left Col */}
-          <div className="lg:col-span-5 w-full flex justify-center lg:justify-start" id="about-image-col">
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true, margin: '-10% 0px' }}
-              transition={{ duration: 0.8 }}
-              className="w-full max-w-[420px] aspect-[3/4] overflow-hidden rounded-[24px] border border-black/5 shadow-sm relative group bg-neutral-100"
-            >
-              <img
-                src={portraitPath}
-                alt="Sudeis F. - Professional Portrait"
-                className="w-full h-full object-cover grayscale contrast-110 group-hover:scale-105 group-hover:grayscale-0 transition-all duration-700 ease-out"
-                referrerPolicy="no-referrer"
-                id="about-portrait-img"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            </motion.div>
-          </div>
-
-          {/* Content Right Col */}
-          <div className="lg:col-span-7 flex flex-col justify-center" id="about-content-col">
+          {/* Content Full Width */}
+          <div className="w-full flex flex-col justify-center max-w-4xl mx-auto" id="about-content-col">
             {/* Styled Broad Category Title */}
             <div className="mb-4">
               <span className="font-display text-[10px] sm:text-xs font-bold tracking-[0.25em] text-[#1C1C1E] uppercase bg-black/5 px-3.5 py-1.5 rounded-full">

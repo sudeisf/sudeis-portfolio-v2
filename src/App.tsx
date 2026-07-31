@@ -15,8 +15,6 @@ import { Project, ExperienceItem } from './types';
 import { safeStorage } from './utils/safeStorage';
 import { apiFetch, verifyAdminSession } from './utils/api';
 import {
-  DEFAULT_HERO_IMAGE,
-  DEFAULT_ABOUT_IMAGE,
   DEFAULT_PROJECTS,
   DEFAULT_EXPERIENCES,
   DEFAULT_OG_IMAGE,
@@ -24,10 +22,7 @@ import {
 
 const SITE_URL = import.meta.env.VITE_APP_URL || 'https://sudeisfedlu.et';
 
-function resolveImageUrl(value: string | null | undefined, fallback: string): string {
-  if (value && typeof value === 'string' && value.trim()) return value;
-  return fallback;
-}
+
 
 function resolveProjects(value: Project[] | null | undefined): Project[] {
   if (Array.isArray(value) && value.length > 0) return value;
@@ -114,12 +109,7 @@ export default function App() {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
 
-  const [heroImage, setHeroImage] = useState<string>(() => {
-    return safeStorage.getItem('sudeis_hero_image') || DEFAULT_HERO_IMAGE;
-  });
-  const [aboutImage, setAboutImage] = useState<string>(() => {
-    return safeStorage.getItem('sudeis_about_image') || DEFAULT_ABOUT_IMAGE;
-  });
+
 
   const [projects, setProjects] = useState<Project[]>(() => {
     const saved = safeStorage.getItem('sudeis_projects');
@@ -169,17 +159,11 @@ export default function App() {
         const res = await fetch('/api/portfolio');
         if (res.ok) {
           const data = await res.json();
-          const nextHero = resolveImageUrl(data.heroImage, DEFAULT_HERO_IMAGE);
-          const nextAbout = resolveImageUrl(data.aboutImage, DEFAULT_ABOUT_IMAGE);
           const nextProjects = resolveProjects(data.projects);
           const nextExperiences = resolveExperiences(data.experiences);
 
-          setHeroImage(nextHero);
-          setAboutImage(nextAbout);
           setProjects(nextProjects);
           setExperiences(nextExperiences);
-          safeStorage.setItem('sudeis_hero_image', nextHero);
-          safeStorage.setItem('sudeis_about_image', nextAbout);
           safeStorage.setItem('sudeis_projects', JSON.stringify(nextProjects));
           safeStorage.setItem('sudeis_experiences', JSON.stringify(nextExperiences));
         }
@@ -190,31 +174,7 @@ export default function App() {
     loadPortfolioData();
   }, []);
 
-  const handleSetHeroImage = async (url: string) => {
-    setHeroImage(url);
-    safeStorage.setItem('sudeis_hero_image', url);
-    try {
-      await apiFetch('/api/portfolio', {
-        method: 'POST',
-        body: JSON.stringify({ key: 'heroImage', value: url }),
-      });
-    } catch (e) {
-      console.error('Failed to save hero image:', e);
-    }
-  };
 
-  const handleSetAboutImage = async (url: string) => {
-    setAboutImage(url);
-    safeStorage.setItem('sudeis_about_image', url);
-    try {
-      await apiFetch('/api/portfolio', {
-        method: 'POST',
-        body: JSON.stringify({ key: 'aboutImage', value: url }),
-      });
-    } catch (e) {
-      console.error('Failed to save about image:', e);
-    }
-  };
 
   const handleSetProjects = async (updatedProjects: Project[]) => {
     setProjects(updatedProjects);
@@ -325,8 +285,6 @@ export default function App() {
   };
 
   const handleResetDefaults = async () => {
-    await handleSetHeroImage(DEFAULT_HERO_IMAGE);
-    await handleSetAboutImage(DEFAULT_ABOUT_IMAGE);
     await handleSetProjects(DEFAULT_PROJECTS);
     await handleSetExperiences(DEFAULT_EXPERIENCES);
   };
@@ -387,10 +345,6 @@ export default function App() {
           setProjects={handleSetProjects}
           experiences={experiences}
           setExperiences={handleSetExperiences}
-          heroImage={heroImage}
-          setHeroImage={handleSetHeroImage}
-          aboutImage={aboutImage}
-          setAboutImage={handleSetAboutImage}
           onResetDefaults={handleResetDefaults}
           theme={theme}
           onThemeChange={setTheme}
@@ -429,9 +383,9 @@ export default function App() {
       />
 
       <main className="flex-1">
-        <Hero portraitPath={heroImage} />
+        <Hero />
         <SkillsTicker />
-        <AboutMe portraitPath={aboutImage} />
+        <AboutMe />
         <Services onStartProject={handleStartProject} />
         <Experience experiences={experiences} />
         <Portfolio projects={projects} />

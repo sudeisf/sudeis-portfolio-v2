@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, 
   Settings, 
-  Image as ImageIcon, 
   FolderGit2, 
   Plus, 
   Trash2, 
@@ -44,10 +43,6 @@ interface AdminDashboardProps {
   setProjects: (projects: Project[]) => void;
   experiences: ExperienceItem[];
   setExperiences: (experiences: ExperienceItem[]) => void;
-  heroImage: string;
-  setHeroImage: (url: string) => void;
-  aboutImage: string;
-  setAboutImage: (url: string) => void;
   onResetDefaults: () => void;
   theme: 'light' | 'dark' | 'system';
   onThemeChange: (theme: 'light' | 'dark' | 'system') => void;
@@ -59,16 +54,12 @@ export default function AdminDashboard({
   setProjects,
   experiences,
   setExperiences,
-  heroImage,
-  setHeroImage,
-  aboutImage,
-  setAboutImage,
   onResetDefaults,
   theme,
   onThemeChange,
   onLogout
 }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState<'images' | 'projects' | 'experiences' | 'inquiries' | 'resume' | 'security'>('images');
+  const [activeTab, setActiveTab] = useState<'projects' | 'experiences' | 'inquiries' | 'resume' | 'security'>('projects');
   
   // Project editing states
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
@@ -466,18 +457,6 @@ export default function AdminDashboard({
           {/* Nav items */}
           <nav className="space-y-1.5">
             <button
-              onClick={() => setActiveTab('images')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-display text-[11px] font-bold tracking-wider uppercase transition-all text-left cursor-pointer ${
-                activeTab === 'images'
-                  ? 'bg-black text-white dark:bg-white dark:text-black font-black'
-                  : 'text-gray-500 dark:text-gray-400 hover:text-black dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'
-              }`}
-            >
-              <ImageIcon className="w-4 h-4" />
-              Site Images
-            </button>
-
-            <button
               onClick={() => setActiveTab('projects')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-display text-[11px] font-bold tracking-wider uppercase transition-all text-left cursor-pointer ${
                 activeTab === 'projects'
@@ -582,7 +561,6 @@ export default function AdminDashboard({
               SECURE ADMIN CONTROL ENVIRONMENT
             </span>
             <h1 className="font-display text-xl font-black tracking-tight text-black dark:text-white uppercase mt-0.5">
-              {activeTab === 'images' && 'Site Visual Identity'}
               {activeTab === 'projects' && 'Portfolio Publications'}
               {activeTab === 'experiences' && 'Experience Timeline'}
               {activeTab === 'inquiries' && 'Prospective Clients Inbox'}
@@ -630,142 +608,6 @@ export default function AdminDashboard({
 
         {/* Tab Contents */}
         <div className="flex-1">
-          {activeTab === 'images' && (
-            <div className="space-y-8 max-w-4xl animate-fade-in" id="cms-tab-images">
-              <div className="bg-white border border-black/5 p-6 rounded-2xl flex items-center justify-between shadow-sm">
-                <div>
-                  <h4 className="font-display text-xs font-bold tracking-wider text-black uppercase">Factory Restorations</h4>
-                  <p className="text-xs text-gray-500 font-light mt-1">Revert hero, about images, and portfolio publications gallery back to standard pre-sets.</p>
-                </div>
-                <button
-                  onClick={() => {
-                    if (confirm('Revert all custom portfolio uploads and changes to original factory defaults?')) {
-                      onResetDefaults();
-                    }
-                  }}
-                  className="flex items-center gap-2 bg-black hover:bg-neutral-800 text-white font-display text-[10px] font-bold uppercase tracking-widest py-2.5 px-4 rounded-xl transition-colors"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  Restore Defaults
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* HERO PORTRAIT */}
-                <div className="bg-white border border-black/5 rounded-2xl p-6 shadow-sm space-y-4">
-                  <div className="border-b border-black/5 pb-3">
-                    <h3 className="font-display text-xs font-black tracking-widest uppercase text-black">
-                      Hero Portrait Customizer
-                    </h3>
-                    <p className="text-[11px] text-gray-400 mt-1 font-light">Shown on the main landing fold of your portfolio site.</p>
-                  </div>
-
-                  <div className="aspect-[4/3] w-full rounded-xl overflow-hidden border border-black/5 bg-neutral-100 relative group flex items-center justify-center">
-                    {heroImage ? (
-                      <img src={heroImage} alt="Hero banner" className="w-full h-full object-cover grayscale contrast-110" referrerPolicy="no-referrer" />
-                    ) : (
-                      <span className="text-xs text-gray-400">Empty State</span>
-                    )}
-                  </div>
-
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-[9px] font-mono text-gray-400 uppercase tracking-widest mb-1">IMAGE LINK URL</label>
-                      <input 
-                        type="text" 
-                        value={heroImage}
-                        onChange={(e) => setHeroImage(e.target.value)}
-                        placeholder="Paste URL..."
-                        className="w-full text-xs bg-[#F6F6F8] border border-black/5 rounded-xl px-3 py-2.5 focus:outline-none focus:border-black/25 font-light"
-                      />
-                    </div>
-
-                    <div 
-                      onDragOver={(e) => handleDrag(e, 'hero', true)}
-                      onDragLeave={(e) => handleDrag(e, 'hero', false)}
-                      onDrop={(e) => handleDrop(e, 'hero')}
-                      onClick={() => heroInputRef.current?.click()}
-                      className={`border border-dashed rounded-xl p-5 text-center cursor-pointer transition-all ${
-                        dragActiveHero 
-                          ? 'border-black bg-black/5' 
-                          : 'border-black/10 hover:border-black/20 bg-[#F6F6F8]'
-                      }`}
-                    >
-                      <input 
-                        ref={heroInputRef}
-                        type="file" 
-                        accept="image/*"
-                        className="hidden" 
-                        onChange={(e) => handleFileChange(e, 'hero')}
-                      />
-                      <Upload className="w-4 h-4 mx-auto text-gray-400 mb-1.5" />
-                      <p className="text-[10px] font-display font-black uppercase tracking-wider text-black">
-                        DRAG & DROP LOCAL PORTRAIT
-                      </p>
-                      <p className="text-[9px] text-gray-400 font-light mt-0.5">Translates file to robust persistent offline base64</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* ABOUT ME PORTRAIT */}
-                <div className="bg-white border border-black/5 rounded-2xl p-6 shadow-sm space-y-4">
-                  <div className="border-b border-black/5 pb-3">
-                    <h3 className="font-display text-xs font-black tracking-widest uppercase text-black">
-                      About Portrait Customizer
-                    </h3>
-                    <p className="text-[11px] text-gray-400 mt-1 font-light">Shown beside the developer experience and narrative fold.</p>
-                  </div>
-
-                  <div className="aspect-[4/3] w-full rounded-xl overflow-hidden border border-black/5 bg-neutral-100 relative group flex items-center justify-center">
-                    {aboutImage ? (
-                      <img src={aboutImage} alt="About Me portrait" className="w-full h-full object-cover grayscale contrast-110" referrerPolicy="no-referrer" />
-                    ) : (
-                      <span className="text-xs text-gray-400">Empty State</span>
-                    )}
-                  </div>
-
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-[9px] font-mono text-gray-400 uppercase tracking-widest mb-1">IMAGE LINK URL</label>
-                      <input 
-                        type="text" 
-                        value={aboutImage}
-                        onChange={(e) => setAboutImage(e.target.value)}
-                        placeholder="Paste URL..."
-                        className="w-full text-xs bg-[#F6F6F8] border border-black/5 rounded-xl px-3 py-2.5 focus:outline-none focus:border-black/25 font-light"
-                      />
-                    </div>
-
-                    <div 
-                      onDragOver={(e) => handleDrag(e, 'about', true)}
-                      onDragLeave={(e) => handleDrag(e, 'about', false)}
-                      onDrop={(e) => handleDrop(e, 'about')}
-                      onClick={() => aboutInputRef.current?.click()}
-                      className={`border border-dashed rounded-xl p-5 text-center cursor-pointer transition-all ${
-                        dragActiveAbout 
-                          ? 'border-black bg-black/5' 
-                          : 'border-black/10 hover:border-black/20 bg-[#F6F6F8]'
-                      }`}
-                    >
-                      <input 
-                        ref={aboutInputRef}
-                        type="file" 
-                        accept="image/*"
-                        className="hidden" 
-                        onChange={(e) => handleFileChange(e, 'about')}
-                      />
-                      <Upload className="w-4 h-4 mx-auto text-gray-400 mb-1.5" />
-                      <p className="text-[10px] font-display font-black uppercase tracking-wider text-black">
-                        DRAG & DROP LOCAL PORTRAIT
-                      </p>
-                      <p className="text-[9px] text-gray-400 font-light mt-0.5">Translates file to robust persistent offline base64</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
           {activeTab === 'projects' && (
             <div className="space-y-8 max-w-5xl animate-fade-in" id="cms-tab-projects">
               
